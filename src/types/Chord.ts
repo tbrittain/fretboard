@@ -22,6 +22,13 @@ export type ChordType =
 	| 'm7b5'
 	| 'dim7';
 
+export type VoicingOptions = {
+	mode?: 'close' | 'open';
+	maxSpread?: number; // in semitones
+	doubling?: 'root' | 'fifth' | 'none';
+	bass?: Note | string | number;
+};
+
 export class Chord {
 	public readonly notes: Note[];
 	public readonly preserveVoicing: boolean;
@@ -131,6 +138,160 @@ export class Chord {
 			results.push(current);
 		}
 		return results;
+	}
+
+	// Simple helper: produce a close-position voicing (minimal ascensions within octave)
+	private closeVoicingNotes(): Note[] {
+		if (this.notes.length === 0) return [];
+		const out: Note[] = [this.notes[0]];
+		let prev = out[0].toMidi();
+		for (let i = 1; i < this.notes.length; i++) {
+			let midi = this.notes[i].toMidi();
+			while (midi <= prev) midi += 12;
+			out.push(new Note(midi));
+			prev = midi;
+		}
+		return out;
+	}
+
+	// Simple helper: produce an "open" voicing by moving every other note up an octave from close voicing
+	private openVoicingNotes(): Note[] {
+		const close = this.closeVoicingNotes();
+		const out = close.map((n) => n);
+		for (let i = 1; i < out.length; i += 2) {
+			out[i] = new Note(out[i].toMidi() + 12);
+		}
+		// ensure ascending order
+		out.sort((a, b) => a.toMidi() - b.toMidi());
+		return out;
+	}
+
+	// Apply doubling by adding an extra root or fifth above the current highest note
+	private applyDoubling(notes: Note[], doubling?: 'root' | 'fifth' | 'none'): Note[] {
+		if (!doubling || doubling === 'none') return notes.slice();
+		// Enforce 6-note cap: doubling would add one note
+		if (notes.length >= 6) throw new Error('Doubling would exceed 6-note chord limit');
+		const midiList = notes.map((n) => n.toMidi());
+		const highest = Math.max(...midiList);
+		// determine root pitch class
+		const q = this.quality();
+		let targetPc: number | null = null;
+		if (doubling === 'root' && q) {
+			targetPc = PITCH_CLASS_NAMES.indexOf(q.root as PitchClass);
+		} else if (doubling === 'fifth' && q) {
+			// fifth is root + 7
+			const rootPc = PITCH_CLASS_NAMES.indexOf(q.root as PitchClass);
+			if (rootPc >= 0) targetPc = (rootPc + 7) % 12;
+		}
+		if (targetPc == null) return notes.slice();
+		// compute a candidate midi for the doubled tone just above highest
+		const octave = Math.floor(highest / 12) + 1;
+		const candidate = octave * 12 + targetPc;
+		// avoid exact duplicate
+		if (midiList.includes(candidate)) return notes.slice();
+		return [...notes, new Note(candidate)];
+	}
+
+	// Try to reduce spread if exceeds maxSpread by moving top notes down an octave
+	private enforceMaxSpread(notes: Note[], maxSpread?: number): Note[] {
+		if (!maxSpread || notes.length === 0) return notes.slice();
+		let out = notes.map((n) => n);
+		// normalize ascending
+		out.sort((a, b) => a.toMidi() - b.toMidi());
+		let min = Math.min(...out.map((n) => n.toMidi()));
+		let max = Math.max(...out.map((n) => n.toMidi()));
+		let spread = max - min;
+		// Attempt to reduce spread by moving the highest down or the lowest up when it improves spread
+		let attempts = 0;
+		while (spread > maxSpread && attempts < 12) {
+			const midis = out.map((n) => n.toMidi());
+			const hiIndex = midis.indexOf(Math.max(...midis));
+			const loIndex = midis.indexOf(Math.min(...midis));
+
+			// candidate if we lower highest by an octave
+			const downMidis = midis.slice();
+			downMidis[hiIndex] = downMidis[hiIndex] - 12;
+			const downMin = Math.min(...downMidis);
+			const downMax = Math.max(...downMidis);
+			const downSpread = downMax - downMin;
+
+			// candidate if we raise lowest by an octave
+			const upMidis = midis.slice();
+			upMidis[loIndex] = upMidis[loIndex] + 12;
+			const upMin = Math.min(...upMidis);
+			const upMax = Math.max(...upMidis);
+			const upSpread = upMax - upMin;
+
+			// pick the best improvement
+			let best = spread;
+			let action: 'none' | 'down' | 'up' = 'none';
+			if (downSpread < best) { best = downSpread; action = 'down'; }
+			if (upSpread < best) { best = upSpread; action = 'up'; }
+
+			if (action === 'none') break; // no improvement possible
+
+			if (action === 'down') {
+				out[hiIndex] = new Note(out[hiIndex].toMidi() - 12);
+			} else if (action === 'up') {
+				out[loIndex] = new Note(out[loIndex].toMidi() + 12);
+			}
+
+			// recompute spread
+			min = Math.min(...out.map((n) => n.toMidi()));
+			max = Math.max(...out.map((n) => n.toMidi()));
+			spread = max - min;
+			// keep loop conservative
+			attempts++;
+		}
+		// sort ascending
+		out.sort((a, b) => a.toMidi() - b.toMidi());
+		return out;
+	}
+
+	// Generate voicings based on options. Returns an array (currently single voicing) for easy future expansion.
+	voicings(options: VoicingOptions = {}): Chord[] {
+		const mode = options.mode || 'close';
+		let notes = mode === 'open' ? this.openVoicingNotes() : this.closeVoicingNotes();
+		// apply doubling if requested
+		notes = this.applyDoubling(notes, options.doubling || 'none');
+		// enforce spread
+		notes = this.enforceMaxSpread(notes, options.maxSpread);
+		let chord = new Chord(notes, false);
+		// set bass if requested
+		if (options.bass) chord = chord.setBass(options.bass);
+		return [chord];
+	}
+
+	// Set the chord's bass to the requested note (by inversion rotation + transpose). Returns a new Chord.
+	setBass(bass: Note | string | number): Chord {
+		let desired: Note;
+		if (bass instanceof Note) desired = bass;
+		else if (typeof bass === 'number') desired = new Note(bass);
+		else if (typeof bass === 'string') desired = new Note(bass);
+		else throw new Error('Unsupported bass input type');
+
+		const desiredMidi = desired.toMidi();
+		const desiredPc = desiredMidi % 12;
+
+		// Try to find an inversion whose lowest pitch class matches desiredPc, then transpose to exact desiredMidi
+		for (let i = 0; i < this.notes.length; i++) {
+			const inv = this.invert(i);
+			const lowest = inv.notes[0];
+			if (lowest.toMidi() % 12 === desiredPc) {
+				const delta = desiredMidi - lowest.toMidi();
+				return inv.transpose(delta);
+			}
+		}
+
+		// Fallback: try to transpose whole chord so lowest becomes desiredPc (closest octave)
+		const baseLowest = this.notes[0];
+		const basePc = baseLowest.toMidi() % 12;
+		let deltaPc = (desiredPc - basePc + 12) % 12;
+		let candidate = this.transpose(deltaPc);
+		// adjust octave if necessary to get exact desiredMidi
+		const lowMidi = candidate.notes[0].toMidi();
+		const octaveShift = desiredMidi - lowMidi;
+		return candidate.transpose(octaveShift);
 	}
 
 	// True if chord contains a given note (by enharmonic equality)

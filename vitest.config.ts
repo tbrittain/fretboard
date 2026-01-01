@@ -5,6 +5,9 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     include: ['src/**/__tests__/**/*.test.ts'],
+    coverage: {
+      reportsDirectory: './coverage',
+    }
   },
 });
 

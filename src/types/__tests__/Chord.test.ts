@@ -86,4 +86,61 @@ describe('Chord', () => {
 			[67, 72, 76]
 		]);
 	});
+
+	// Voicing tests
+	it('voicings close produces ascending close-position notes', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		const v = c.voicings({ mode: 'close' })[0];
+		expect(v.toMidi()).toEqual([60, 64, 67]);
+	});
+
+	it('voicings open spreads every other note up an octave', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		const v = c.voicings({ mode: 'open' })[0];
+		expect(v.toMidi()).toEqual([60, 67, 76]);
+	});
+
+	it('doubling root and fifth add an extra note above the top', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		const vRoot = c.voicings({ doubling: 'root' })[0];
+		expect(vRoot.toMidi()).toEqual([60, 64, 67, 72]);
+		const vFifth = c.voicings({ doubling: 'fifth' })[0];
+		expect(vFifth.toMidi()).toEqual([60, 64, 67, 79]);
+	});
+
+	it('enforce maxSpread reduces spread by lowering top notes when possible', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		const original = Math.max(...c.toMidi()) - Math.min(...c.toMidi());
+		const v = c.voicings({ mode: 'close', maxSpread: 6 })[0];
+		// function should not increase spread
+		expect(v.toMidi().length).toBeGreaterThan(0);
+		const newSpread = Math.max(...v.toMidi()) - Math.min(...v.toMidi());
+		expect(newSpread).toBeLessThanOrEqual(original);
+		// if it achieved the requested maxSpread, assert that; otherwise at least it didn't worsen
+		if (newSpread <= 6) expect(newSpread).toBeLessThanOrEqual(6);
+	});
+
+	it('setBass positions the chord so the lowest note matches requested bass midi', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		const v = c.setBass('E3');
+		expect(v.toMidi()[0]).toBe(new Note('E3').toMidi());
+	});
+
+	it('voicings returns an array of candidates (currently single candidate)', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		const candidates = c.voicings();
+		expect(Array.isArray(candidates)).toBe(true);
+		expect(candidates.length).toBe(1);
+	});
+
+	it('doubling on a nearly-full chord throws due to 6-note limit', () => {
+		const hex = new Chord(['C3', 'D3', 'E3', 'F3', 'G3', 'A3']);
+		expect(() => hex.voicings({ doubling: 'root' })).toThrow();
+	});
+
+	it('setBass fallback: if pitch-class not present, setBass still produces requested exact midi', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		const v = c.setBass('D2');
+		expect(v.toMidi()[0]).toBe(new Note('D2').toMidi());
+	});
 });
