@@ -1,10 +1,12 @@
 import {createFileRoute} from '@tanstack/react-router'
+import Fret from "@/components/frets/Fret.tsx";
 
 export const Route = createFileRoute('/')({component: App})
 
 function App() {
     return (
         <div className="min-h-screen bg-linear-to-b from-slate-900 via-slate-800 to-slate-900">
+            <Fret />
             <section className="relative py-20 px-6 text-center overflow-hidden">
                 <p>
                     Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore
