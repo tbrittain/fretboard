@@ -61,7 +61,32 @@ export class Chord {
 
 	// Return space-separated canonical note names in current internal order
 	toString(): string {
-		return this.notes.map((n) => n.toString()).join(' ');
+		const sym = this.symbol();
+		const notes = this.notes.map((n) => n.toString()).join(' ');
+		if (sym) return `${sym} (${notes})`;
+		return notes;
+	}
+
+	// Return a chord symbol like 'C', 'Am', 'Cmaj7', or null if unknown
+	symbol(): string | null {
+		const q = this.quality();
+		if (!q) return null;
+		const { root, type } = q;
+		const SUFFIX_MAP: Record<ChordType, string> = {
+			maj: '',
+			m: 'm',
+			dim: 'dim',
+			aug: 'aug',
+			sus2: 'sus2',
+			sus4: 'sus4',
+			maj7: 'maj7',
+			'7': '7',
+			m7: 'm7',
+			m7b5: 'm7b5',
+			dim7: 'dim7'
+		};
+		const suffix = SUFFIX_MAP[type] ?? type;
+		return `${root}${suffix}`;
 	}
 
 	// Return MIDI numbers in current internal order

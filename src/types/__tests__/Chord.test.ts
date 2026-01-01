@@ -5,13 +5,13 @@ import { Chord } from '../Chord';
 describe('Chord', () => {
 	it('constructs from mixed inputs and sorts by midi by default', () => {
 		const c = new Chord([new Note('E4'), 'C4', 67]);
-		expect(c.toString()).toBe('C4 E4 G4');
+		expect(c.toString()).toBe('C (C4 E4 G4)');
 		expect(c.toMidi()).toEqual([60, 64, 67]);
 	});
 
 	it('respects preserveVoicing when true', () => {
 		const c = new Chord(['E4', 'C4', 'G4'], true);
-		expect(c.toString()).toBe('E4 C4 G4');
+		expect(c.toString()).toBe('C (E4 C4 G4)');
 	});
 
 	it('transposes correctly', () => {
