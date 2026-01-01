@@ -65,5 +65,25 @@ describe('Chord', () => {
 		// inversion: E4 C4 G4 => still C major
 		expect(new Chord(['E4', 'C4', 'G4']).quality()).toEqual({ root: 'C', type: 'maj' });
 	});
-});
 
+	// New tests for inversion behavior
+	it('invert shifts lowest note up an octave and invert(0) is identity', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		expect(c.invert(0).toMidi()).toEqual([60, 64, 67]);
+		const inv1 = c.invert(1);
+		expect(inv1.toMidi()).toEqual([64, 67, 72]);
+		const inv2 = c.invert(2);
+		expect(inv2.toMidi()).toEqual([67, 72, 76]);
+	});
+
+	it('allInversions returns the sequence of successive inversions', () => {
+		const c = new Chord(['C4', 'E4', 'G4']);
+		const invs = c.allInversions();
+		expect(invs.length).toBe(3);
+		expect(invs.map((ch) => ch.toMidi())).toEqual([
+			[60, 64, 67],
+			[64, 67, 72],
+			[67, 72, 76]
+		]);
+	});
+});

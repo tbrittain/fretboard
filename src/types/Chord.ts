@@ -108,6 +108,31 @@ export class Chord {
 		return this.notes.map((n) => ((n.toMidi() - rootMidi) % 12 + 12) % 12);
 	}
 
+	// Invert the chord by moving the lowest note up one octave, repeated n times
+	invert(n = 1): Chord {
+		if (this.notes.length === 0 || n <= 0) return new Chord(this.notes.slice(), this.preserveVoicing);
+		// Work on a copy of the current internal order
+		const notesCopy = this.notes.map((x) => x);
+		for (let i = 0; i < n; i++) {
+			const low = notesCopy.shift();
+			if (!low) break;
+			notesCopy.push(new Note(low.toMidi() + 12));
+		}
+		return new Chord(notesCopy, this.preserveVoicing);
+	}
+
+	// Return all inversions of the chord (0..size-1)
+	allInversions(): Chord[] {
+		const results: Chord[] = [];
+		let current = new Chord(this.notes.slice(), this.preserveVoicing);
+		results.push(current);
+		for (let i = 1; i < this.notes.length; i++) {
+			current = current.invert(1);
+			results.push(current);
+		}
+		return results;
+	}
+
 	// True if chord contains a given note (by enharmonic equality)
 	contains(n: Note | string | number): boolean {
 		let needle: Note;
