@@ -6,6 +6,22 @@
 // - By default sorts notes by ascending MIDI number (preserveVoicing = false)
 // - Removes exact-duplicate pitches (same MIDI number)
 
+const PITCH_CLASS_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
+export type PitchClass = typeof PITCH_CLASS_NAMES[number];
+
+export type ChordType =
+	| 'maj'
+	| 'm'
+	| 'dim'
+	| 'aug'
+	| 'sus2'
+	| 'sus4'
+	| 'maj7'
+	| '7'
+	| 'm7'
+	| 'm7b5'
+	| 'dim7';
+
 export class Chord {
 	public readonly notes: Note[];
 	public readonly preserveVoicing: boolean;
@@ -115,5 +131,41 @@ export class Chord {
 	get size(): number {
 		return this.notes.length;
 	}
-}
 
+	// Detect basic chord quality using pitch-class sets. Returns { root: 'C', type: 'maj' } or null if unknown
+	quality(): { root: PitchClass; type: ChordType } | null {
+		if (this.notes.length === 0) return null;
+
+		// Build unique pitch-class set (0..11)
+		const pcs = Array.from(new Set(this.notes.map((n) => n.toMidi() % 12))).sort((a, b) => a - b);
+		if (pcs.length === 0) return null;
+
+		// Map of interval signature to chord type
+		const PATTERNS: Record<string, ChordType> = {
+			'0,4,7': 'maj',
+			'0,3,7': 'm',
+			'0,3,6': 'dim',
+			'0,4,8': 'aug',
+			'0,2,7': 'sus2',
+			'0,5,7': 'sus4',
+			'0,4,7,11': 'maj7',
+			'0,4,7,10': '7',
+			'0,3,7,10': 'm7',
+			'0,3,6,10': 'm7b5',
+			'0,3,6,9': 'dim7'
+		};
+
+		// Try each rotation (consider inversions): pick each pitch class as root
+		for (let i = 0; i < pcs.length; i++) {
+			const root = pcs[i];
+			const intervals = pcs.map((pc) => ((pc - root) % 12 + 12) % 12).sort((a, b) => a - b);
+			const key = intervals.join(',');
+			if (PATTERNS[key]) {
+				return { root: PITCH_CLASS_NAMES[root], type: PATTERNS[key] };
+			}
+		}
+
+		// Not recognized
+		return null;
+	}
+}

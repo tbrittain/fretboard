@@ -47,5 +47,23 @@ describe('Chord', () => {
 	it('throws for too many notes in constructor', () => {
 		expect(() => new Chord(['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4'])).toThrow();
 	});
+
+	it('detects chord quality for common types and handles inversions', () => {
+		expect(new Chord(['C4', 'E4', 'G4']).quality()).toEqual({ root: 'C', type: 'maj' });
+		expect(new Chord(['A3', 'C4', 'E4']).quality()).toEqual({ root: 'A', type: 'm' });
+		expect(new Chord(['C4', 'E4', 'G#4']).quality()).toEqual({ root: 'C', type: 'aug' });
+		expect(new Chord(['B3', 'D4', 'F4']).quality()).toEqual({ root: 'B', type: 'dim' });
+		expect(new Chord(['C4', 'D4', 'G4']).quality()).toEqual({ root: 'C', type: 'sus2' });
+		expect(new Chord(['C4', 'F4', 'G4']).quality()).toEqual({ root: 'C', type: 'sus4' });
+
+		expect(new Chord(['C4', 'E4', 'G4', 'B4']).quality()).toEqual({ root: 'C', type: 'maj7' });
+		expect(new Chord(['C4', 'E4', 'G4', 'Bb4']).quality()).toEqual({ root: 'C', type: '7' });
+		expect(new Chord(['A3', 'C4', 'E4', 'G4']).quality()).toEqual({ root: 'A', type: 'm7' });
+		expect(new Chord(['B3', 'D4', 'F4', 'A4']).quality()).toEqual({ root: 'B', type: 'm7b5' });
+		expect(new Chord(['C4', 'Eb4', 'Gb4', 'A4']).quality()).toEqual({ root: 'C', type: 'dim7' });
+
+		// inversion: E4 C4 G4 => still C major
+		expect(new Chord(['E4', 'C4', 'G4']).quality()).toEqual({ root: 'C', type: 'maj' });
+	});
 });
 
