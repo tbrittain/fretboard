@@ -39,11 +39,11 @@ function GuitarNeck({
     return (
         <div>
             <div>
-                {fretNumbers.map((fretNumber) => {
+                {fretNumbers.map((fretNumber, index) => {
                     const notes = getEStandardFretNotes(fretNumber)
                     return <Fret
                         fretNumber={fretNumber}
-                        displayNumber={fretNumber === 0 || fretNumbersToShow.has(fretNumber)}
+                        displayNumber={index === 0 || fretNumbersToShow.has(fretNumber)}
                         notes={notes.map(note => {
                             return {
                                 note: note.note,
