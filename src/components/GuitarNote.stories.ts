@@ -28,3 +28,20 @@ export const Selected: Story = {
         onClick: (note) => alert(`Guitar note ${note.toString()} clicked`)
     }
 };
+
+export const DifferentStringThickness: Story = {
+    args: {
+        note: new Note('E2'),
+        stringThickness: 8,
+        onClick: (note) => alert(`Guitar note ${note.toString()} clicked`)
+    }
+};
+
+export const DisplayNoNoteWhenSelected: Story = {
+    args: {
+        note: new Note('A3'),
+        isSelected: true,
+        displayNoteWhenSelected: false,
+        onClick: (note) => alert(`Guitar note ${note.toString()} clicked`)
+    }
+};

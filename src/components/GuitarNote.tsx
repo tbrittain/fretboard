@@ -5,9 +5,16 @@ export type GuitarNoteProps = {
     onClick?: (note: Note) => void
     isSelected?: boolean
     stringThickness?: number
+    displayNoteWhenSelected?: boolean
 }
 
-export function GuitarNote({note, onClick, isSelected = false, stringThickness}: GuitarNoteProps) {
+export function GuitarNote({
+                               note,
+                               onClick,
+                               isSelected = false,
+                               stringThickness = 2.5,
+                               displayNoteWhenSelected = true
+                           }: GuitarNoteProps) {
     // derive a short label for the note (strip octave digits if present)
     const full = note?.toString() ?? '';
     const label = full.replace(/\d+$/g, '');
@@ -69,7 +76,7 @@ export function GuitarNote({note, onClick, isSelected = false, stringThickness}:
                         boxShadow: '0 1px 0 rgba(0,0,0,0.06)'
                     }}
                 >
-                    {label}
+                    {displayNoteWhenSelected ? label : null}
                 </div>
             ) : null}
         </div>
