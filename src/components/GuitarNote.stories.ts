@@ -16,7 +16,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
     args: {
-        note: new Note('C')
+        note: new Note('C'),
+        onClick: (note) => alert(`Guitar note ${note.toString()} clicked`)
     }
 };
 
@@ -24,6 +25,6 @@ export const Selected: Story = {
     args: {
         note: new Note('G4'),
         isSelected: true,
-        onClick: () => alert('Guitar note clicked'),
+        onClick: (note) => alert(`Guitar note ${note.toString()} clicked`)
     }
 };

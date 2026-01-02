@@ -2,7 +2,7 @@
 
 export type GuitarNoteProps = {
     note: Note
-    onClick?: () => void
+    onClick?: (note: Note) => void
     isSelected?: boolean
 }
 
@@ -16,7 +16,7 @@ export function GuitarNote({note, onClick, isSelected = false}: GuitarNoteProps)
         if (!onClick) return;
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onClick();
+            onClick(note);
         }
     };
 
@@ -33,7 +33,7 @@ export function GuitarNote({note, onClick, isSelected = false}: GuitarNoteProps)
                 justifyContent: 'center',
                 cursor: onClick ? 'pointer' : 'default',
             }}
-            onClick={onClick}
+            onClick={() => onClick?.(note)}
             onKeyDown={handleKeyDown}
             aria-pressed={isSelected ? 'true' : undefined}
         >
