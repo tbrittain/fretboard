@@ -10,33 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as QuizzesGuessTheNoteRouteImport } from './routes/quizzes/guess-the-note'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuizzesGuessTheNoteRoute = QuizzesGuessTheNoteRouteImport.update({
+  id: '/quizzes/guess-the-note',
+  path: '/quizzes/guess-the-note',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/quizzes/guess-the-note': typeof QuizzesGuessTheNoteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/quizzes/guess-the-note': typeof QuizzesGuessTheNoteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/quizzes/guess-the-note': typeof QuizzesGuessTheNoteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/quizzes/guess-the-note'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/quizzes/guess-the-note'
+  id: '__root__' | '/' | '/quizzes/guess-the-note'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  QuizzesGuessTheNoteRoute: typeof QuizzesGuessTheNoteRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +58,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quizzes/guess-the-note': {
+      id: '/quizzes/guess-the-note'
+      path: '/quizzes/guess-the-note'
+      fullPath: '/quizzes/guess-the-note'
+      preLoaderRoute: typeof QuizzesGuessTheNoteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  QuizzesGuessTheNoteRoute: QuizzesGuessTheNoteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

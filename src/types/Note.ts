@@ -64,7 +64,7 @@ const DEFAULT_OCTAVE = 4; // middle-C octave for unspecified octave input
 
 export class Note {
 	private readonly midiNumber: number; // store as MIDI-like absolute semitone (C-1 = 0 convention won't be strictly necessary)
-	private readonly canonicalName: string; // prefer sharp names for toString (e.g., C#, D)
+	readonly canonicalName: string; // prefer sharp names for toString (e.g., C#, D)
 	private readonly octave: number;
 
 	// Public constructor overloads: either (name: string, octave?: number) or (midi: number)
