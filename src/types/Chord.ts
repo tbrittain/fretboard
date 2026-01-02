@@ -1,13 +1,4 @@
-﻿import { Note } from './Note';
-
-// Minimal Chord implementation (MVP)
-// - Accepts up to 6 notes (Note | string | number)
-// - Normalizes inputs to Note instances
-// - By default sorts notes by ascending MIDI number (preserveVoicing = false)
-// - Removes exact-duplicate pitches (same MIDI number)
-
-const PITCH_CLASS_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
-export type PitchClass = typeof PITCH_CLASS_NAMES[number];
+﻿import { Note, PITCH_CLASS_NAMES, PitchClass } from './Note';
 
 export type ChordType =
 	| 'maj'

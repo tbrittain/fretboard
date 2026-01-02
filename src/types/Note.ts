@@ -1,4 +1,7 @@
-﻿const NOTE_TO_SEMITONE: Record<string, number> = {
+﻿export const PITCH_CLASS_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
+export type PitchClass = typeof PITCH_CLASS_NAMES[number];
+
+const NOTE_TO_SEMITONE: Record<string, number> = {
 	'C': 0,
 	'C#': 1,
 	'D': 2,
@@ -22,6 +25,39 @@
 	'B#': 0,
 	'E#': 5
 };
+
+// Export a helper to get the canonical pitch-class name for a semitone value
+export function canonicalNameForSemitone(midi: number): PitchClass {
+	const semitone = ((midi % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) % SEMITONES_PER_OCTAVE;
+	switch (semitone) {
+		case 0:
+			return 'C';
+		case 1:
+			return 'C#';
+		case 2:
+			return 'D';
+		case 3:
+			return 'D#';
+		case 4:
+			return 'E';
+		case 5:
+			return 'F';
+		case 6:
+			return 'F#';
+		case 7:
+			return 'G';
+		case 8:
+			return 'G#';
+		case 9:
+			return 'A';
+		case 10:
+			return 'A#';
+		case 11:
+			return 'B';
+		default:
+			return 'C';
+	}
+}
 
 const SEMITONES_PER_OCTAVE = 12;
 const DEFAULT_OCTAVE = 4; // middle-C octave for unspecified octave input
@@ -122,7 +158,7 @@ export class Note {
 		}
 
 		// Choose a canonical name: prefer sharps for display when semitone is a sharp key
-		const canonical = Note.canonicalNameForSemitone(midi);
+		const canonical = canonicalNameForSemitone(midi);
 
 		return { name: canonical, octave: Note.midiToOctave(midi), midi };
 	}
@@ -140,39 +176,7 @@ export class Note {
 
 	private static decomposeMidi(midi: number) {
 		const octave = Note.midiToOctave(midi);
-		const name = Note.canonicalNameForSemitone(midi);
+		const name = canonicalNameForSemitone(midi);
 		return { name, octave };
-	}
-
-	private static canonicalNameForSemitone(midi: number): string {
-		const semitone = ((midi % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) % SEMITONES_PER_OCTAVE;
-		switch (semitone) {
-			case 0:
-				return 'C';
-			case 1:
-				return 'C#';
-			case 2:
-				return 'D';
-			case 3:
-				return 'D#';
-			case 4:
-				return 'E';
-			case 5:
-				return 'F';
-			case 6:
-				return 'F#';
-			case 7:
-				return 'G';
-			case 8:
-				return 'G#';
-			case 9:
-				return 'A';
-			case 10:
-				return 'A#';
-			case 11:
-				return 'B';
-			default:
-				return 'C';
-		}
 	}
 }
