@@ -20,7 +20,7 @@ export const Default: Story = {
         notes: getEStandardFretNotes(2).map((note, index) => {
             // selected on A and D strings (5th and 4th)
             const isSelected = (index === 3 || index === 4);
-            return { note, isSelected };
+            return { note: note.note, isSelected };
         })
     }
 };

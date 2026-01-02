@@ -3,7 +3,7 @@
 export type FretProps = {
     fretNumber: number;
     displayNumber?: boolean;
-    notes: GuitarNoteProps[];
+    notes: Omit<GuitarNoteProps, 'stringThickness'>[];
 }
 
 const thicknesses = [2, 2.25, 2.5, 2.75, 3, 3.5];
