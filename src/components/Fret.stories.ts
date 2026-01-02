@@ -1,6 +1,6 @@
 ﻿import type { Meta, StoryObj } from '@storybook/react-vite';
 import Fret from "@/components/Fret.tsx";
-import {Note} from "@/types/Note.ts";
+import {getEStandardFretNotes} from "@/types/GuitarNeckEStandardTuning.ts";
 
 const meta = {
     title: 'Fret',
@@ -17,31 +17,10 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
     args: {
         fretNumber: 2,
-        notes:[
-            {
-                note: new Note('F#'),
-                isSelected: false,
-            },
-            {
-                note: new Note('C'),
-                isSelected: false,
-            },
-            {
-                note: new Note('A'),
-                isSelected: false,
-            },
-            {
-                note: new Note('E'),
-                isSelected: true,
-            },
-            {
-                note: new Note('B'),
-                isSelected: true,
-            },
-            {
-                note: new Note('G'),
-                isSelected: false,
-            },
-        ]
+        notes: getEStandardFretNotes(2).map((note, index) => {
+            // selected on A and D strings (5th and 4th)
+            const isSelected = (index === 3 || index === 4);
+            return { note, isSelected };
+        })
     }
 };

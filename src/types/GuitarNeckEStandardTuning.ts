@@ -28,3 +28,10 @@ export const GuitarNeckEStandardTuning: Note[][] = [
     generateStringNotes(A),     // 5th string
     generateStringNotes(lowE),  // 6th string
 ];
+
+export function getEStandardFretNotes(fretNumber: number): Note[] {
+    if (fretNumber < 0 || fretNumber > NUM_FRETS) {
+        throw new Error(`Fret number must be between 0 and ${NUM_FRETS}, but got ${fretNumber}`);
+    }
+    return GuitarNeckEStandardTuning.map(stringNotes => stringNotes[fretNumber]);
+}
