@@ -4,9 +4,10 @@ export type GuitarNoteProps = {
     note: Note
     onClick?: (note: Note) => void
     isSelected?: boolean
+    stringThickness?: number
 }
 
-export function GuitarNote({note, onClick, isSelected = false}: GuitarNoteProps) {
+export function GuitarNote({note, onClick, isSelected = false, stringThickness}: GuitarNoteProps) {
     // derive a short label for the note (strip octave digits if present)
     const full = note?.toString() ?? '';
     const label = full.replace(/\d+$/g, '');
@@ -39,7 +40,14 @@ export function GuitarNote({note, onClick, isSelected = false}: GuitarNoteProps)
         >
             {/* string line */}
             <div aria-hidden
-                 style={{position: 'absolute', left: 8, right: 8, height: 2, background: '#cfcfcf', borderRadius: 2}}/>
+                 style={{
+                     position: 'absolute',
+                     left: 8,
+                     right: 8,
+                     height: stringThickness,
+                     background: '#cfcfcf',
+                     borderRadius: 2
+                 }}/>
 
             {/* when selected, render circular badge centered over the string */}
             {isSelected ? (

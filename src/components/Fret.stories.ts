@@ -16,30 +16,30 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
     args: {
+        fretNumber: 2,
         notes:[
             {
-                note: new Note('F#2'),
+                note: new Note('F#'),
                 isSelected: false,
             },
             {
-                note: new Note('B2'),
+                note: new Note('C'),
                 isSelected: false,
             },
             {
-                note: new Note('E3'),
+                note: new Note('A'),
                 isSelected: false,
             },
             {
-                note: new Note('G3'),
+                note: new Note('E'),
                 isSelected: true,
-                onClick: () => alert('Guitar note clicked'),
             },
             {
-                note: new Note('B3'),
-                isSelected: false,
+                note: new Note('B'),
+                isSelected: true,
             },
             {
-                note: new Note('F#4'),
+                note: new Note('G'),
                 isSelected: false,
             },
         ]
