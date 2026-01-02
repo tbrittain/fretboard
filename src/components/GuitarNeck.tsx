@@ -1,6 +1,5 @@
 ﻿import Fret from "@/components/Fret.tsx";
 import {getEStandardFretNotes, StringNote} from "@/types/GuitarNeckEStandardTuning.ts";
-import {Chord} from "@/types/Chord.ts";
 
 export type GuitarNeckProps = {
     selectedNotes: StringNote[];
@@ -51,6 +50,7 @@ function GuitarNeck({
                                 displayNoteWhenSelected: displayNoteLabels,
                                 isSelected: selectedNotes?.some(selected => selected.stringIndex === note.stringIndex && selected.note.equalsEnharmonic(note.note)) ?? false,
                                 onClick: () => {
+                                    // TODO: may want a controlled mode
                                     setSelectedNotes((prev) => {
                                         const exists = prev?.some(selected => selected.stringIndex === note.stringIndex && selected.note.equalsEnharmonic(note.note));
                                         if (exists) {

@@ -2,7 +2,7 @@ import {createFileRoute} from '@tanstack/react-router'
 import GuitarNeck from "@/components/GuitarNeck.tsx";
 import {useState} from "react";
 import {GuitarNeckEStandardTuning, StringNote} from "@/types/GuitarNeckEStandardTuning.ts";
-import {PITCH_CLASS_NAMES, PitchClass} from "@/types/Note.ts";
+import {PITCH_CLASS_NAMES} from "@/types/Note.ts";
 
 export const Route = createFileRoute('/quizzes/guess-the-note')({
     component: RouteComponent,
@@ -16,16 +16,18 @@ function getRandomNote(numberOfFrets: number): StringNote {
     const fretNumber = Math.floor(Math.random() * numberOfFrets) + STARTS_AT_FRET;
 
     const note = GuitarNeckEStandardTuning[stringIndex][fretNumber];
-    return { stringIndex, note };
+    return {stringIndex, note};
 }
 
 function RouteComponent() {
     const [selectedNumberOfFrets, setSelectedNumberOfFrets] = useState<number>(NUMBER_OF_FRETS);
     const [selectedNotes, setSelectedNotes] = useState<StringNote[]>([getRandomNote(selectedNumberOfFrets)])
-    const [selectedOption, setSelectedOption] = useState<PitchClass>('C');
+    const [score, setScore] = useState<{ correct: number; total: number }>({correct: 0, total: 0});
+    const [incorrectNotes, setIncorrectNotes] = useState<StringNote[]>([]);
 
     return (
-        <div>
+        <div className="p-4 bg-white rounded shadow-md mx-10 mt-10 flex flex-col items-center">
+            <h2 className="text-lg font-semibold mb-3">Guess the Note Quiz</h2>
             <label htmlFor="number-of-frets">Number of Frets: </label>
             <select
                 id="number-of-frets"
@@ -53,33 +55,45 @@ function RouteComponent() {
                 displayNoteLabels={false}
             />
 
-            <select
-                aria-label={`pitch-class`}
-                value={selectedOption}
-                onChange={(e) => setSelectedOption(e.target.value as PitchClass)}
-                className="border p-1 rounded"
-            >
+            <div>
                 {PITCH_CLASS_NAMES.map((pc) => (
-                    <option key={pc} value={pc}>
+                    <button
+                        key={pc}
+                        onClick={() => {
+                            const currentNote = selectedNotes[0].note;
+                            if (currentNote.canonicalName === pc) {
+                                alert(`Correct! The note is ${currentNote.toString()}`);
+                                setScore(({correct, total}) => ({correct: correct + 1, total: total + 1}));
+                            } else {
+                                alert(`Incorrect. The note is ${currentNote.toString()}`);
+                                setScore(({correct, total}) => ({correct, total: total + 1}));
+                                setIncorrectNotes((prev) => [...prev, selectedNotes[0]]);
+                            }
+                            setSelectedNotes([getRandomNote(selectedNumberOfFrets)]);
+                        }}
+                        className="m-1 p-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
                         {pc}
-                    </option>
+                    </button>
                 ))}
-            </select>
-            <button
-                onClick={() => {
-                    const currentNote = selectedNotes[0].note;
-                    if (currentNote.canonicalName === selectedOption) {
-                        alert(`Correct! The note is ${currentNote.toString()}`);
-                    } else {
-                        alert(`Incorrect. The note is ${currentNote.toString()}`);
-                    }
-                    setSelectedNotes([getRandomNote(selectedNumberOfFrets)]);
-                    setSelectedOption('C');
-                }}
-                className="ml-2 p-1 bg-blue-500 text-white rounded"
-            >
-                Submit
-            </button>
+            </div>
+
+            <div className="mt-4">
+                Score: {score.correct} / {score.total}
+            </div>
+
+            {incorrectNotes.length > 0 && (
+                <div className="mt-4">
+                    <h3 className="font-medium">Incorrect Notes:</h3>
+                    <ul>
+                        {incorrectNotes.map((note, index) => (
+                            <li key={index}>
+                                String {note.stringIndex + 1}, Note: {note.note.toString()}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
     )
 }
