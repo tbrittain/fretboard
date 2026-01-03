@@ -2,7 +2,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {Note, PITCH_CLASS_NAMES} from '@/types/Note.ts'
 
-export const Route = createFileRoute('/quizzes/guess-the-transposition')({
+export const Route = createFileRoute('/quizzes/note-math')({
     component: RouteComponent,
 })
 
@@ -57,7 +57,7 @@ function RouteComponent() {
             const parsedNote = new Note(trimmed)
             const target = currentNote.transpose(semitones)
 
-            if (parsedNote.equalsEnharmonic(parsedNote)) {
+            if (parsedNote.equalsPitchClass(target)) {
                 setFeedback(`Correct! ${target.toString().replace(/\d+$/, '')}`)
                 setScore(({correct, total}) => ({correct: correct + 1, total: total + 1}))
             } else {
@@ -104,8 +104,8 @@ function RouteComponent() {
             </div>
 
             <div className="mb-4 flex items-center space-x-6">
-                <div className="text-2xl font-bold">{currentNote.toString()}</div>
-                <div className="text-xl font-medium text-gray-600">{semitones}</div>
+                <div className="text-2xl font-bold">{currentNote.canonicalName}</div>
+                <div className="text-xl font-medium text-gray-600">{semitones > 0 ? `+${semitones}` : semitones}</div>
 
                 <form onSubmit={submitAnswer}>
                     <input
