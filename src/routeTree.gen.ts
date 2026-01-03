@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as QuizzesGuessTheTranspositionRouteImport } from './routes/quizzes/guess-the-transposition'
 import { Route as QuizzesGuessTheNoteRouteImport } from './routes/quizzes/guess-the-note'
 
 const IndexRoute = IndexRouteImport.update({
@@ -17,6 +18,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuizzesGuessTheTranspositionRoute =
+  QuizzesGuessTheTranspositionRouteImport.update({
+    id: '/quizzes/guess-the-transposition',
+    path: '/quizzes/guess-the-transposition',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const QuizzesGuessTheNoteRoute = QuizzesGuessTheNoteRouteImport.update({
   id: '/quizzes/guess-the-note',
   path: '/quizzes/guess-the-note',
@@ -26,27 +33,38 @@ const QuizzesGuessTheNoteRoute = QuizzesGuessTheNoteRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/quizzes/guess-the-note': typeof QuizzesGuessTheNoteRoute
+  '/quizzes/guess-the-transposition': typeof QuizzesGuessTheTranspositionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/quizzes/guess-the-note': typeof QuizzesGuessTheNoteRoute
+  '/quizzes/guess-the-transposition': typeof QuizzesGuessTheTranspositionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/quizzes/guess-the-note': typeof QuizzesGuessTheNoteRoute
+  '/quizzes/guess-the-transposition': typeof QuizzesGuessTheTranspositionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/quizzes/guess-the-note'
+  fullPaths:
+    | '/'
+    | '/quizzes/guess-the-note'
+    | '/quizzes/guess-the-transposition'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/quizzes/guess-the-note'
-  id: '__root__' | '/' | '/quizzes/guess-the-note'
+  to: '/' | '/quizzes/guess-the-note' | '/quizzes/guess-the-transposition'
+  id:
+    | '__root__'
+    | '/'
+    | '/quizzes/guess-the-note'
+    | '/quizzes/guess-the-transposition'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   QuizzesGuessTheNoteRoute: typeof QuizzesGuessTheNoteRoute
+  QuizzesGuessTheTranspositionRoute: typeof QuizzesGuessTheTranspositionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -56,6 +74,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quizzes/guess-the-transposition': {
+      id: '/quizzes/guess-the-transposition'
+      path: '/quizzes/guess-the-transposition'
+      fullPath: '/quizzes/guess-the-transposition'
+      preLoaderRoute: typeof QuizzesGuessTheTranspositionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/quizzes/guess-the-note': {
@@ -71,6 +96,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   QuizzesGuessTheNoteRoute: QuizzesGuessTheNoteRoute,
+  QuizzesGuessTheTranspositionRoute: QuizzesGuessTheTranspositionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
