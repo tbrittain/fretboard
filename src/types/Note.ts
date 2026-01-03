@@ -109,6 +109,11 @@ export class Note {
 		return this.midiNumber === other.midiNumber;
 	}
 
+	// True if two notes have the same pitch class (ignoring octave)
+	equalsPitchClass(other: Note): boolean {
+		return (this.midiNumber % SEMITONES_PER_OCTAVE) === (other.midiNumber % SEMITONES_PER_OCTAVE);
+	}
+
 	// Parse a string like 'C4', 'C#4', 'Db3', 'A', 'g#5' -> returns { name, octave, midi }
 	static parse(input: string): { name: string; octave: number; midi: number } {
 		if (!input || typeof input !== 'string') {

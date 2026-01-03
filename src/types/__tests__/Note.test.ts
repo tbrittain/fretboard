@@ -39,6 +39,12 @@ describe('Note', () => {
 		expect(new Note('B#3').equalsEnharmonic(new Note('C4'))).toBe(true);
 	});
 
+	it('equalsPitchClass returns true for the same note, regardless of octave', () => {
+		expect(new Note('C4').equalsPitchClass(new Note('C5'))).toBe(true);
+		expect(new Note('D#3').equalsPitchClass(new Note('Eb6'))).toBe(true);
+		expect(new Note('F4').equalsPitchClass(new Note('F#4'))).toBe(false);
+	});
+
 	it('throws on invalid input', () => {
 		expect(() => new Note('H4' as any)).toThrow();
 		expect(() => new Note('C##4' as any)).toThrow();
