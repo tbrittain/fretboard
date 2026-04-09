@@ -1,16 +1,19 @@
 node_modules
 .DS_Store
-dist
-dist-ssr
 *.local
-count.txt
 .env
-.nitro
-.tanstack
+
+# SvelteKit
+.svelte-kit
+build
+
+# Cloudflare / Wrangler
 .wrangler
 .output
-.vinxi
-todos.json
+
+# Coverage
+coverage
+
+# Editor
 .idea
-*storybook.log
-storybook-static
+.vscode

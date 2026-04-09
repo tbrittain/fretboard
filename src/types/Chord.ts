@@ -1,4 +1,4 @@
-﻿import { Note, PITCH_CLASS_NAMES, PitchClass } from './Note';
+﻿import { Note, PITCH_CLASS_NAMES, type PitchClass } from './Note';
 
 export type ChordType =
 	| 'maj'

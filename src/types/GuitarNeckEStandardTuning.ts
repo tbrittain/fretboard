@@ -1,4 +1,4 @@
-﻿import {Note} from "@/types/Note.ts";
+﻿import { Note } from './Note.js';
 
 const lowE = new Note('E2');
 const A = new Note('A2');
