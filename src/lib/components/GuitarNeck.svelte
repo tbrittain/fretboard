@@ -22,7 +22,7 @@
 	const FRET_WIDTH = 72;
 	const STRING_SPACING = 32;
 	const STRING_COUNT = 6;
-	const PAD_H = 32;
+	const PAD_H = 46;
 	const PAD_V = 28;
 	const NOTE_RADIUS = 13;
 	const FRET_OVERHANG = 8; // how far fret wires extend above/below outermost strings
@@ -46,8 +46,16 @@
 	];
 	const STRING_WIDTHS = [1.0, 1.3, 1.8, 2.4, 3.0, 3.6];
 
+	// When startsAtFret === 0, fret cells represent frets 1–N (open strings get their own zone).
+	// Otherwise fret cells represent startsAtFret–(startsAtFret+N-1).
+	let effectiveStartFret = $derived(startsAtFret === 0 ? 1 : startsAtFret);
+
 	let neckWidth = $derived(PAD_H * 2 + FRET_WIDTH * numberOfFrets);
 	let fretIndices = $derived(Array.from({ length: numberOfFrets }, (_, i) => i));
+
+	// x center of the open-string circles, sitting 6px clear of the nut's left edge.
+	// PAD_H=46 ensures the circle (radius 13) has ~8px margin from the canvas left edge.
+	const OPEN_STRING_X = PAD_H - 6 - NOTE_RADIUS - 6; // = 21
 
 	function stringY(s: number): number {
 		return PAD_V + s * STRING_SPACING;
@@ -61,8 +69,9 @@
 		return PAD_H + (index + 1) * FRET_WIDTH;
 	}
 
+	// Fretted note for a given cell (uses effectiveStartFret so fretIndex 0 = first real fret).
 	function getNote(stringIndex: number, fretIndex: number): StringNote | undefined {
-		const fretNumber = startsAtFret + fretIndex;
+		const fretNumber = effectiveStartFret + fretIndex;
 		return getEStandardFretNotes(fretNumber).find((n) => n.stringIndex === stringIndex);
 	}
 
@@ -76,6 +85,24 @@
 
 	function handleClick(stringIndex: number, fretIndex: number) {
 		const note = getNote(stringIndex, fretIndex);
+		if (note) onNoteClick?.(note);
+	}
+
+	// Open-string helpers (fret 0, only relevant when startsAtFret === 0).
+	function getOpenNote(stringIndex: number): StringNote | undefined {
+		return getEStandardFretNotes(0).find((n) => n.stringIndex === stringIndex);
+	}
+
+	function isOpenSelected(stringIndex: number): boolean {
+		const note = getOpenNote(stringIndex);
+		if (!note) return false;
+		return selectedNotes.some(
+			(s) => s.stringIndex === stringIndex && s.note.equalsEnharmonic(note.note),
+		);
+	}
+
+	function handleOpenClick(stringIndex: number) {
+		const note = getOpenNote(stringIndex);
 		if (note) onNoteClick?.(note);
 	}
 </script>
@@ -93,7 +120,58 @@
 				cornerRadius={4}
 			/>
 
-			<!-- Nut (thick bar at fret 0) -->
+			<!-- Open string hit areas + circles (startsAtFret === 0 only).
+			     Rendered before the nut so the nut paints on top if needed,
+			     but circles are positioned cleanly to the LEFT of the nut. -->
+			{#if startsAtFret === 0}
+				{#each STRING_INDICES as stringIndex}
+					{@const openSelected = isOpenSelected(stringIndex)}
+					{@const openNote = openSelected ? getOpenNote(stringIndex) : undefined}
+
+					<Group
+						x={OPEN_STRING_X}
+						y={stringY(stringIndex)}
+						onclick={() => handleOpenClick(stringIndex)}
+					>
+						<!-- Hit area centred on the open-string circle -->
+						<Rect
+							x={-NOTE_RADIUS - 2}
+							y={-STRING_SPACING / 2}
+							width={NOTE_RADIUS * 2 + 4}
+							height={STRING_SPACING}
+							fill="rgba(0,0,0,0.001)"
+						/>
+						{#if openSelected}
+							<Circle
+								radius={NOTE_RADIUS}
+								fill="#2563EB"
+								stroke="#BFDBFE"
+								strokeWidth={1.5}
+								shadowColor="#2563EB"
+								shadowBlur={8}
+								shadowOpacity={0.6}
+							/>
+							{#if displayNoteLabels && openNote}
+								<Text
+									x={-NOTE_RADIUS}
+									y={-NOTE_RADIUS}
+									width={NOTE_RADIUS * 2}
+									height={NOTE_RADIUS * 2}
+									text={openNote.note.canonicalName}
+									fontSize={10}
+									fontStyle="bold"
+									fill="#FFFFFF"
+									fontFamily="Ubuntu, sans-serif"
+									align="center"
+									verticalAlign="middle"
+								/>
+							{/if}
+						{/if}
+					</Group>
+				{/each}
+			{/if}
+
+			<!-- Nut (thick bar, only when startsAtFret === 0) -->
 			{#if startsAtFret === 0}
 				<Rect
 					x={PAD_H - 6}
@@ -128,7 +206,7 @@
 
 			<!-- Position marker dots -->
 			{#each fretIndices as i}
-				{@const fn = startsAtFret + i}
+				{@const fn = effectiveStartFret + i}
 				{#if SINGLE_DOT_FRETS.has(fn)}
 					<Circle
 						x={noteCenterX(i)}
@@ -157,7 +235,7 @@
 
 			<!-- Fret number labels -->
 			{#each fretIndices as i}
-				{@const fn = startsAtFret + i}
+				{@const fn = effectiveStartFret + i}
 				{#if i === 0 || LABEL_FRETS.has(fn)}
 					<Text
 						x={noteCenterX(i) - 14}
@@ -172,7 +250,7 @@
 				{/if}
 			{/each}
 
-			<!-- Note hit areas and markers -->
+			<!-- Fretted note hit areas and markers -->
 			{#each fretIndices as fretIndex}
 				{#each STRING_INDICES as stringIndex}
 					{@const selected = isSelected(stringIndex, fretIndex)}
