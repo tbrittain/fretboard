@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/sveltekit';
-import ChordInspector from './ChordInspector.svelte';
+import type { Meta, StoryObj } from "@storybook/sveltekit";
+import ChordInspector from "./ChordInspector.svelte";
 
 const meta = {
-	title: 'Components/ChordInspector',
+	title: "Components/ChordInspector",
 	component: ChordInspector,
 	parameters: {
-		layout: 'fullscreen',
+		layout: "fullscreen",
 	},
 } satisfies Meta<typeof ChordInspector>;
 

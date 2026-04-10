@@ -1,0 +1,18 @@
+pre-commit:
+  commands:
+    biome-fix:
+      glob: "*.{ts,svelte,js}"
+      # Auto-fix what Biome can; always exit 0 so the commit is never blocked
+      run: biome check --write {staged_files} || true
+      stage_fixed: true
+
+post-checkout:
+  commands:
+    npm-install:
+      # Only run on branch checkouts (arg 3 == 1), not file checkouts
+      run: if [ "{3}" = "1" ]; then npm i; fi
+
+post-merge:
+  commands:
+    npm-install:
+      run: npm i

@@ -1,112 +1,120 @@
 <script lang="ts">
-	import { Stage, Layer, Rect, Line, Circle, Text, Group } from 'svelte-konva';
-	import { getEStandardFretNotes, type StringNote } from '$types/GuitarNeckEStandardTuning';
+import { Circle, Group, Layer, Line, Rect, Stage, Text } from "svelte-konva";
+import {
+	getEStandardFretNotes,
+	type StringNote,
+} from "$types/GuitarNeckEStandardTuning";
 
-	type Props = {
-		selectedNotes?: StringNote[];
-		mutedStrings?: number[];
-		onNoteClick?: (note: StringNote) => void;
-		startsAtFret?: number;
-		numberOfFrets?: number;
-		displayNoteLabels?: boolean;
-	};
+type Props = {
+	selectedNotes?: StringNote[];
+	mutedStrings?: number[];
+	onNoteClick?: (note: StringNote) => void;
+	startsAtFret?: number;
+	numberOfFrets?: number;
+	displayNoteLabels?: boolean;
+};
 
-	let {
-		selectedNotes = [],
-		mutedStrings = [],
-		onNoteClick,
-		startsAtFret = 0,
-		numberOfFrets = 12,
-		displayNoteLabels = true,
-	}: Props = $props();
+let {
+	selectedNotes = [],
+	mutedStrings = [],
+	onNoteClick,
+	startsAtFret = 0,
+	numberOfFrets = 12,
+	displayNoteLabels = true,
+}: Props = $props();
 
-	// Layout constants
-	const FRET_WIDTH = 72;
-	const STRING_SPACING = 32;
-	const STRING_COUNT = 6;
-	const PAD_H = 46;
-	const PAD_V = 28;
-	const NOTE_RADIUS = 13;
-	const FRET_OVERHANG = 8; // how far fret wires extend above/below outermost strings
+// Layout constants
+const FRET_WIDTH = 72;
+const STRING_SPACING = 32;
+const STRING_COUNT = 6;
+const PAD_H = 46;
+const PAD_V = 28;
+const NOTE_RADIUS = 13;
+const FRET_OVERHANG = 8; // how far fret wires extend above/below outermost strings
 
-	const NECK_HEIGHT = PAD_V * 2 + STRING_SPACING * (STRING_COUNT - 1);
-	const STRING_INDICES = [0, 1, 2, 3, 4, 5];
+const NECK_HEIGHT = PAD_V * 2 + STRING_SPACING * (STRING_COUNT - 1);
+const STRING_INDICES = [0, 1, 2, 3, 4, 5];
 
-	// Fret position markers
-	const SINGLE_DOT_FRETS = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
-	const DOUBLE_DOT_FRETS = new Set([12, 24]);
-	const LABEL_FRETS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21]);
+// Fret position markers
+const SINGLE_DOT_FRETS = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
+const DOUBLE_DOT_FRETS = new Set([12, 24]);
+const LABEL_FRETS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21]);
 
-	// String visual properties (index 0 = high E, index 5 = low E)
-	const STRING_COLORS = [
-		'#D8D8D8',
-		'#C8C8C8',
-		'#B4B4B4',
-		'#C8A040',
-		'#B89030',
-		'#A88020',
-	];
-	const STRING_WIDTHS = [1.0, 1.3, 1.8, 2.4, 3.0, 3.6];
+// String visual properties (index 0 = high E, index 5 = low E)
+const STRING_COLORS = [
+	"#D8D8D8",
+	"#C8C8C8",
+	"#B4B4B4",
+	"#C8A040",
+	"#B89030",
+	"#A88020",
+];
+const STRING_WIDTHS = [1.0, 1.3, 1.8, 2.4, 3.0, 3.6];
 
-	// When startsAtFret === 0, fret cells represent frets 1–N (open strings get their own zone).
-	// Otherwise fret cells represent startsAtFret–(startsAtFret+N-1).
-	let effectiveStartFret = $derived(startsAtFret === 0 ? 1 : startsAtFret);
+// When startsAtFret === 0, fret cells represent frets 1–N (open strings get their own zone).
+// Otherwise fret cells represent startsAtFret–(startsAtFret+N-1).
+let effectiveStartFret = $derived(startsAtFret === 0 ? 1 : startsAtFret);
 
-	let neckWidth = $derived(PAD_H * 2 + FRET_WIDTH * numberOfFrets);
-	let fretIndices = $derived(Array.from({ length: numberOfFrets }, (_, i) => i));
+let neckWidth = $derived(PAD_H * 2 + FRET_WIDTH * numberOfFrets);
+let fretIndices = $derived(Array.from({ length: numberOfFrets }, (_, i) => i));
 
-	// x center of the open-string circles, sitting 6px clear of the nut's left edge.
-	// PAD_H=46 ensures the circle (radius 13) has ~8px margin from the canvas left edge.
-	const OPEN_STRING_X = PAD_H - 6 - NOTE_RADIUS - 6; // = 21
+// x center of the open-string circles, sitting 6px clear of the nut's left edge.
+// PAD_H=46 ensures the circle (radius 13) has ~8px margin from the canvas left edge.
+const OPEN_STRING_X = PAD_H - 6 - NOTE_RADIUS - 6; // = 21
 
-	function stringY(s: number): number {
-		return PAD_V + s * STRING_SPACING;
-	}
+function stringY(s: number): number {
+	return PAD_V + s * STRING_SPACING;
+}
 
-	function noteCenterX(fretIndex: number): number {
-		return PAD_H + fretIndex * FRET_WIDTH + FRET_WIDTH / 2;
-	}
+function noteCenterX(fretIndex: number): number {
+	return PAD_H + fretIndex * FRET_WIDTH + FRET_WIDTH / 2;
+}
 
-	function fretWireX(index: number): number {
-		return PAD_H + (index + 1) * FRET_WIDTH;
-	}
+function fretWireX(index: number): number {
+	return PAD_H + (index + 1) * FRET_WIDTH;
+}
 
-	// Fretted note for a given cell (uses effectiveStartFret so fretIndex 0 = first real fret).
-	function getNote(stringIndex: number, fretIndex: number): StringNote | undefined {
-		const fretNumber = effectiveStartFret + fretIndex;
-		return getEStandardFretNotes(fretNumber).find((n) => n.stringIndex === stringIndex);
-	}
+// Fretted note for a given cell (uses effectiveStartFret so fretIndex 0 = first real fret).
+function getNote(
+	stringIndex: number,
+	fretIndex: number,
+): StringNote | undefined {
+	const fretNumber = effectiveStartFret + fretIndex;
+	return getEStandardFretNotes(fretNumber).find(
+		(n) => n.stringIndex === stringIndex,
+	);
+}
 
-	function isSelected(stringIndex: number, fretIndex: number): boolean {
-		const note = getNote(stringIndex, fretIndex);
-		if (!note) return false;
-		return selectedNotes.some(
-			(s) => s.stringIndex === stringIndex && s.note.equalsEnharmonic(note.note),
-		);
-	}
+function isSelected(stringIndex: number, fretIndex: number): boolean {
+	const note = getNote(stringIndex, fretIndex);
+	if (!note) return false;
+	return selectedNotes.some(
+		(s) => s.stringIndex === stringIndex && s.note.equalsEnharmonic(note.note),
+	);
+}
 
-	function handleClick(stringIndex: number, fretIndex: number) {
-		const note = getNote(stringIndex, fretIndex);
-		if (note) onNoteClick?.(note);
-	}
+function handleClick(stringIndex: number, fretIndex: number) {
+	const note = getNote(stringIndex, fretIndex);
+	if (note) onNoteClick?.(note);
+}
 
-	// Open-string helpers (fret 0, only relevant when startsAtFret === 0).
-	function getOpenNote(stringIndex: number): StringNote | undefined {
-		return getEStandardFretNotes(0).find((n) => n.stringIndex === stringIndex);
-	}
+// Open-string helpers (fret 0, only relevant when startsAtFret === 0).
+function getOpenNote(stringIndex: number): StringNote | undefined {
+	return getEStandardFretNotes(0).find((n) => n.stringIndex === stringIndex);
+}
 
-	function isOpenSelected(stringIndex: number): boolean {
-		const note = getOpenNote(stringIndex);
-		if (!note) return false;
-		return selectedNotes.some(
-			(s) => s.stringIndex === stringIndex && s.note.equalsEnharmonic(note.note),
-		);
-	}
+function isOpenSelected(stringIndex: number): boolean {
+	const note = getOpenNote(stringIndex);
+	if (!note) return false;
+	return selectedNotes.some(
+		(s) => s.stringIndex === stringIndex && s.note.equalsEnharmonic(note.note),
+	);
+}
 
-	function handleOpenClick(stringIndex: number) {
-		const note = getOpenNote(stringIndex);
-		if (note) onNoteClick?.(note);
-	}
+function handleOpenClick(stringIndex: number) {
+	const note = getOpenNote(stringIndex);
+	if (note) onNoteClick?.(note);
+}
 </script>
 
 <div class="neck-wrapper">

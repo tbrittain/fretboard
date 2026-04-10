@@ -1,18 +1,20 @@
-﻿import { Note } from './Note.js';
+﻿import { Note } from "./Note.js";
 
-const lowE = new Note('E2');
-const A = new Note('A2');
-const D = new Note('D3');
-const G = new Note('G3');
-const B = new Note('B3');
-const highE = new Note('E4');
+const lowE = new Note("E2");
+const A = new Note("A2");
+const D = new Note("D3");
+const G = new Note("G3");
+const B = new Note("B3");
+const highE = new Note("E4");
 
 // for each of the above notes, we'll transpose up 22 semitones to get all frets
 
 const NUM_FRETS = 22;
 
 function generateStringNotes(openNote: Note): Note[] {
-    return Array.from({length: NUM_FRETS + 1}, (_, fret) => openNote.transpose(fret));
+	return Array.from({ length: NUM_FRETS + 1 }, (_, fret) =>
+		openNote.transpose(fret),
+	);
 }
 
 /**
@@ -21,28 +23,30 @@ function generateStringNotes(openNote: Note): Note[] {
  * and the 5th index is the 6th string (low E).
  */
 export const GuitarNeckEStandardTuning: Note[][] = [
-    generateStringNotes(highE), // 1st string
-    generateStringNotes(B),     // 2nd string
-    generateStringNotes(G),     // 3rd string
-    generateStringNotes(D),     // 4th string
-    generateStringNotes(A),     // 5th string
-    generateStringNotes(lowE),  // 6th string
+	generateStringNotes(highE), // 1st string
+	generateStringNotes(B), // 2nd string
+	generateStringNotes(G), // 3rd string
+	generateStringNotes(D), // 4th string
+	generateStringNotes(A), // 5th string
+	generateStringNotes(lowE), // 6th string
 ];
 
 export type StringNote = {
-    /**
-     * The string index (0 = 1st string, 5 = 6th string)
-     */
-    stringIndex: number;
-    note: Note;
-}
+	/**
+	 * The string index (0 = 1st string, 5 = 6th string)
+	 */
+	stringIndex: number;
+	note: Note;
+};
 
 export function getEStandardFretNotes(fretNumber: number): StringNote[] {
-    if (fretNumber < 0 || fretNumber > NUM_FRETS) {
-        throw new Error(`Fret number must be between 0 and ${NUM_FRETS}, but got ${fretNumber}`);
-    }
-    return GuitarNeckEStandardTuning.map((stringNotes, index) => {
-        const note = stringNotes[fretNumber];
-        return { stringIndex: index, note };
-    });
+	if (fretNumber < 0 || fretNumber > NUM_FRETS) {
+		throw new Error(
+			`Fret number must be between 0 and ${NUM_FRETS}, but got ${fretNumber}`,
+		);
+	}
+	return GuitarNeckEStandardTuning.map((stringNotes, index) => {
+		const note = stringNotes[fretNumber];
+		return { stringIndex: index, note };
+	});
 }

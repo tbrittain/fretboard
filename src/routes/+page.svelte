@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ChordInspector from '$lib/components/ChordInspector.svelte';
+import ChordInspector from "$lib/components/ChordInspector.svelte";
 </script>
 
 <svelte:head>

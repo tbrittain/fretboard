@@ -1,61 +1,76 @@
-﻿export const PITCH_CLASS_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
-export type PitchClass = typeof PITCH_CLASS_NAMES[number];
+﻿export const PITCH_CLASS_NAMES = [
+	"C",
+	"C#",
+	"D",
+	"D#",
+	"E",
+	"F",
+	"F#",
+	"G",
+	"G#",
+	"A",
+	"A#",
+	"B",
+] as const;
+export type PitchClass = (typeof PITCH_CLASS_NAMES)[number];
 
 const NOTE_TO_SEMITONE: Record<string, number> = {
-	'C': 0,
-	'C#': 1,
-	'D': 2,
-	'D#': 3,
-	'E': 4,
-	'F': 5,
-	'F#': 6,
-	'G': 7,
-	'G#': 8,
-	'A': 9,
-	'A#': 10,
-	'B': 11,
+	C: 0,
+	"C#": 1,
+	D: 2,
+	"D#": 3,
+	E: 4,
+	F: 5,
+	"F#": 6,
+	G: 7,
+	"G#": 8,
+	A: 9,
+	"A#": 10,
+	B: 11,
 	// flats mapped to same semitone as their enharmonic sharp
-	'Db': 1,
-	'Eb': 3,
-	'Gb': 6,
-	'Ab': 8,
-	'Bb': 10,
-	'Cb': 11,
-	'Fb': 4,
-	'B#': 0,
-	'E#': 5
+	Db: 1,
+	Eb: 3,
+	Gb: 6,
+	Ab: 8,
+	Bb: 10,
+	Cb: 11,
+	Fb: 4,
+	"B#": 0,
+	"E#": 5,
 };
 
 // Export a helper to get the canonical pitch-class name for a semitone value
 export function canonicalNameForSemitone(midi: number): PitchClass {
-	const semitone = ((midi % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) % SEMITONES_PER_OCTAVE;
+	const semitone =
+		((midi % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) %
+		SEMITONES_PER_OCTAVE;
 	switch (semitone) {
 		case 0:
-			return 'C';
+			return "C";
 		case 1:
-			return 'C#';
+			return "C#";
 		case 2:
-			return 'D';
+			return "D";
 		case 3:
-			return 'D#';
+			return "D#";
 		case 4:
-			return 'E';
+			return "E";
 		case 5:
-			return 'F';
+			return "F";
 		case 6:
-			return 'F#';
+			return "F#";
 		case 7:
-			return 'G';
+			return "G";
 		case 8:
-			return 'G#';
+			return "G#";
 		case 9:
-			return 'A';
+			return "A";
 		case 10:
-			return 'A#';
+			return "A#";
 		case 11:
-			return 'B';
+			return "B";
 		default:
-			return 'C';
+			return "C";
 	}
 }
 
@@ -71,13 +86,15 @@ export class Note {
 	constructor(name: string, octave?: number);
 	constructor(midi: number);
 	constructor(nameOrMidi: string | number, octave?: number) {
-		if (typeof nameOrMidi === 'number') {
+		if (typeof nameOrMidi === "number") {
 			this.midiNumber = nameOrMidi;
 			const { name, octave: oct } = Note.decomposeMidi(nameOrMidi);
 			this.canonicalName = name;
 			this.octave = oct;
 		} else {
-			const parsed = Note.parse(nameOrMidi + (octave !== undefined ? String(octave) : ''));
+			const parsed = Note.parse(
+				nameOrMidi + (octave !== undefined ? String(octave) : ""),
+			);
 			this.midiNumber = parsed.midi;
 			this.canonicalName = parsed.name;
 			this.octave = parsed.octave;
@@ -111,13 +128,16 @@ export class Note {
 
 	// True if two notes have the same pitch class (ignoring octave)
 	equalsPitchClass(other: Note): boolean {
-		return (this.midiNumber % SEMITONES_PER_OCTAVE) === (other.midiNumber % SEMITONES_PER_OCTAVE);
+		return (
+			this.midiNumber % SEMITONES_PER_OCTAVE ===
+			other.midiNumber % SEMITONES_PER_OCTAVE
+		);
 	}
 
 	// Parse a string like 'C4', 'C#4', 'Db3', 'A', 'g#5' -> returns { name, octave, midi }
 	static parse(input: string): { name: string; octave: number; midi: number } {
-		if (!input || typeof input !== 'string') {
-			throw new Error('Invalid note input');
+		if (!input || typeof input !== "string") {
+			throw new Error("Invalid note input");
 		}
 
 		const s = input.trim();
@@ -128,13 +148,14 @@ export class Note {
 		letter = letter.toUpperCase();
 		const nameKey = accidental ? letter + accidental : letter;
 
-		let octave = octaveStr !== undefined ? parseInt(octaveStr, 10) : DEFAULT_OCTAVE;
+		const octave =
+			octaveStr !== undefined ? parseInt(octaveStr, 10) : DEFAULT_OCTAVE;
 
 		// Handle special cases like B# -> behaves like C of next octave, Cb -> behaves like B of previous octave
 		let semitone = NOTE_TO_SEMITONE[nameKey];
 		if (semitone === undefined) {
 			// Try normalized forms (upper-case accidental)
-			const normalizedKey = letter + (accidental || '');
+			const normalizedKey = letter + (accidental || "");
 			semitone = NOTE_TO_SEMITONE[normalizedKey];
 		}
 		if (semitone === undefined) {
@@ -150,14 +171,14 @@ export class Note {
 		// Simpler approach: if the textual name indicates a natural letter and accidental that crosses octave boundaries,
 		// use a small set: B# -> semitone 0 but should be octave+1; Cb -> semitone 11 but octave-1; E# -> F (semitone 5) but same octave; Fb -> E
 
-		if (nameKey === 'B#') {
+		if (nameKey === "B#") {
 			midi = Note.semitoneToMidi(0, octave + 1);
-		} else if (nameKey === 'Cb') {
+		} else if (nameKey === "Cb") {
 			midi = Note.semitoneToMidi(11, octave - 1);
-		} else if (nameKey === 'E#') {
+		} else if (nameKey === "E#") {
 			// E# is F in same octave
 			midi = Note.semitoneToMidi(5, octave);
-		} else if (nameKey === 'Fb') {
+		} else if (nameKey === "Fb") {
 			// Fb is E in same octave
 			midi = Note.semitoneToMidi(4, octave);
 		}
@@ -171,7 +192,11 @@ export class Note {
 	private static semitoneToMidi(semitone: number, octave: number) {
 		// MIDI convention: C4 = 60. Semitone 0 is C. So midi = (octave + 1) * 12 ?
 		// Use formula: midi = (octave + 1) * 12 + semitone where octave 4 -> (4 + 1)*12 = 60 base for C4
-		return (octave + 1) * SEMITONES_PER_OCTAVE + (semitone % SEMITONES_PER_OCTAVE + SEMITONES_PER_OCTAVE) % SEMITONES_PER_OCTAVE;
+		return (
+			(octave + 1) * SEMITONES_PER_OCTAVE +
+			(((semitone % SEMITONES_PER_OCTAVE) + SEMITONES_PER_OCTAVE) %
+				SEMITONES_PER_OCTAVE)
+		);
 	}
 
 	private static midiToOctave(midi: number) {
