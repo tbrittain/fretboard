@@ -17,6 +17,7 @@ coverage
 
 # Storybook
 storybook-static
+build-storybook.log
 
 # Editor
 .idea
