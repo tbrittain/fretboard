@@ -26,9 +26,9 @@ This is a VS Code issue, not a Claude or Node issue. It only affects the current
 
 **Cause:** npm 11 bug — optional platform-specific packages (e.g. `@rolldown/binding-wasm32-wasi`, a Vite 8 / Rolldown wasm32 binding) have their dependencies written into the lock file even when the package itself is not installed on the current platform. `npm ci` then sees unresolved entries and fails. Regenerating the lock file with `npm install` does not fix this.
 
-**Fix:** Explicitly add the missing packages as `optionalDependencies`:
+**Fix:** Explicitly add the missing packages as `devDependencies` (not `optionalDependencies`):
 ```bash
-npm install --save-optional @emnapi/runtime@1.9.2 @emnapi/core@1.9.2
+npm install --save-dev @emnapi/core@1.9.2 @emnapi/runtime@1.9.2
 ```
 
-This gives npm proper resolved entries in the lock file without actually installing the packages on non-wasm32 platforms.
+Using `--save-optional` does NOT work — npm won't resolve optional packages it deems unneeded for the current platform, so the lock file entries still won't be created. Using `--save-dev` forces npm to resolve and install them unconditionally, creating the required lock file entries. They are tiny pure-JS packages with no platform restrictions, so installing them as devDependencies has no meaningful cost.
