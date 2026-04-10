@@ -1,13 +1,10 @@
 {
-  "files.watcherExclude": {
-    "**/routeTree.gen.ts": true
-  },
-  "search.exclude": {
-    "**/routeTree.gen.ts": true
-  },
-  "files.readonlyInclude": {
-    "**/routeTree.gen.ts": true
-  },
+  "json.schemas": [
+    {
+      "fileMatch": ["biome.json"],
+      "url": "https://biomejs.dev/schemas/2.4.11/schema.json"
+    }
+  ],
   "[javascript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
@@ -24,6 +21,9 @@
     "editor.defaultFormatter": "biomejs.biome"
   },
   "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[svelte]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
   "[css]": {

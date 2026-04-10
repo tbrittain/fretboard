@@ -21,7 +21,8 @@
 		"vscode": {
 			"extensions": [
 				"anthropic.claude-code",
-				"svelte.svelte-vscode"
+				"svelte.svelte-vscode",
+				"biomejs.biome"
 			]
 		}
 	}
