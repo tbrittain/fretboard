@@ -13,22 +13,21 @@
     "deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare"
   },
   "dependencies": {
-    "konva": "^9.3.20",
+    "konva": "^10.2.3",
     "svelte-konva": "^1.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.4",
+    "@biomejs/biome": "2.4.11",
     "@sveltejs/adapter-cloudflare": "^7.0.0",
     "@sveltejs/kit": "^2.0.0",
-    "@sveltejs/vite-plugin-svelte": "^6.0.0",
-    "@types/node": "^22.10.2",
-    "@vitest/coverage-v8": "^4.0.16",
-    "playwright": "^1.57.0",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@types/node": "^25.5.2",
+    "@vitest/coverage-v8": "^4.1.4",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
-    "typescript": "^5.7.2",
-    "vite": "^7.1.7",
-    "vitest": "^4.0.16",
-    "wrangler": "^4.40.3"
+    "typescript": "^6.0.2",
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4",
+    "wrangler": "^4.81.1"
   }
 }

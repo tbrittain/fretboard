@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+import { page } from "$app/state";
 
-	let { children } = $props();
+const { children } = $props();
 
-	let menuOpen = $state(false);
+let menuOpen = $state(false);
 
-	const navLinks = [
-		{ href: '/', label: 'Home' },
-		{ href: '/quizzes/guess-the-note', label: 'Guess The Note' },
-		{ href: '/quizzes/note-math', label: 'Note Math' },
-	];
+const navLinks = [
+	{ href: "/", label: "Home" },
+	{ href: "/quizzes/guess-the-note", label: "Guess The Note" },
+	{ href: "/quizzes/note-math", label: "Note Math" },
+];
 </script>
 
 <header>
@@ -35,7 +35,7 @@
 			{#each navLinks as link}
 				<a
 					href={link.href}
-					class:active={$page.url.pathname === link.href}
+					class:active={page.url.pathname === link.href}
 					onclick={() => (menuOpen = false)}
 				>
 					{link.label}

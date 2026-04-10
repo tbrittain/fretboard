@@ -18,7 +18,7 @@ A client-side guitar learning app built with SvelteKit + svelte-konva. All guita
 | Canvas | svelte-konva + konva |
 | Adapter | `@sveltejs/adapter-cloudflare` v7+ |
 | Tests | Vitest (node env, no DOM) |
-| Linting | Biome (TypeScript files only — Svelte files are excluded) |
+| Linting/Formatting | Biome (replaces ESLint + Prettier; covers `.ts` and `.svelte` files) |
 | Deploy | `wrangler pages deploy .svelte-kit/cloudflare` |
 
 ## Svelte 5 patterns
