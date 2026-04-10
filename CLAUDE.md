@@ -80,7 +80,7 @@ Import components as: `import GuitarNeck from '$lib/components/GuitarNeck.svelte
 
 ## Musical primitives (`src/types/`)
 
-These are pure TypeScript — no framework dependencies. Do not modify them unless fixing a musical logic bug.
+These are pure TypeScript — no framework dependencies.
 
 - **`Note`** — pitch class + octave, MIDI conversion, transposition, enharmonic comparison. Key props: `canonicalName` (e.g. `'C#'`), `toString()` (e.g. `'C#4'`).
 - **`Chord`** — up to 6 notes, quality detection, voicings, inversions.

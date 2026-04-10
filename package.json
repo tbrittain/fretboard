@@ -6,7 +6,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test:unit": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
