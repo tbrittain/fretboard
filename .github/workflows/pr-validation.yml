@@ -72,7 +72,7 @@ jobs:
           script: |
             const marker = '<!-- cf-pages-preview -->';
             const url = 'https://pr-${{ github.event.pull_request.number }}.fretboard-a8u.pages.dev';
-            const sha = context.sha;
+            const sha = context.payload.pull_request.head.sha;
             const shortSha = sha.slice(0, 7);
             const timestamp = new Date().toUTCString();
             const body = `${marker}\n🚀 Preview deployed: ${url}\n\n| | |\n|---|---|\n| **Commit** | \`${shortSha}\` |\n| **Last deployed** | ${timestamp} |`;
