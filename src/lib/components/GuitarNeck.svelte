@@ -4,6 +4,7 @@
 
 	type Props = {
 		selectedNotes?: StringNote[];
+		mutedStrings?: number[];
 		onNoteClick?: (note: StringNote) => void;
 		startsAtFret?: number;
 		numberOfFrets?: number;
@@ -12,6 +13,7 @@
 
 	let {
 		selectedNotes = [],
+		mutedStrings = [],
 		onNoteClick,
 		startsAtFret = 0,
 		numberOfFrets = 12,
@@ -170,6 +172,26 @@
 					</Group>
 				{/each}
 			{/if}
+
+			<!-- Muted string X markers — always shown in the pre-nut zone regardless of startsAtFret -->
+			{#each STRING_INDICES as stringIndex}
+				{#if mutedStrings.includes(stringIndex)}
+					<Group x={OPEN_STRING_X} y={stringY(stringIndex)}>
+						<Line
+							points={[-9, -9, 9, 9]}
+							stroke="#EF4444"
+							strokeWidth={2.5}
+							lineCap="round"
+						/>
+						<Line
+							points={[9, -9, -9, 9]}
+							stroke="#EF4444"
+							strokeWidth={2.5}
+							lineCap="round"
+						/>
+					</Group>
+				{/if}
+			{/each}
 
 			<!-- Nut (thick bar, only when startsAtFret === 0) -->
 			{#if startsAtFret === 0}

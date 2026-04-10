@@ -43,6 +43,7 @@ export const OpenCChord: Story = {
 	name: 'Open C Major Chord',
 	args: {
 		selectedNotes: openCChord,
+		mutedStrings: [5], // low E string is not played
 	},
 };
 
@@ -59,6 +60,7 @@ export const HideNoteLabels: Story = {
 	name: 'Hide Note Labels',
 	args: {
 		selectedNotes: openCChord,
+		mutedStrings: [5],
 		displayNoteLabels: false,
 	},
 };
