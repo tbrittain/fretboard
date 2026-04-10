@@ -54,17 +54,19 @@ Use `on:click` for svelte-konva component events (it uses Svelte 4's event dispa
   import { Stage, Layer, Rect, Line, Circle, Text, Group } from 'svelte-konva';
 </script>
 
-<Stage config={{ width: 500, height: 200 }}>
+<Stage width={500} height={200}>
   <Layer>
-    <Group config={{ x: 100, y: 50 }} on:click={handleClick}>
-      <Circle config={{ radius: 12, fill: '#2563EB', stroke: 'white', strokeWidth: 1.5 }} />
-      <Text config={{ x: -12, y: -12, width: 24, height: 24, text: 'C#', align: 'center', verticalAlign: 'middle', fill: 'white', fontSize: 10 }} />
+    <Group x={100} y={50} onclick={handleClick}>
+      <Circle radius={12} fill="#2563EB" stroke="white" strokeWidth={1.5} />
+      <Text x={-12} y={-12} width={24} height={24} text="C#" align="center" verticalAlign="middle" fill="white" fontSize={10} />
     </Group>
   </Layer>
 </Stage>
 ```
 
-For click hit areas on transparent shapes, use `fill: 'rgba(0,0,0,0.001)'` rather than `'transparent'` to ensure Konva registers the hit.
+svelte-konva v1 uses **flat props** — all Konva config properties are passed directly as component attributes, not wrapped in a `config` object. Events are plain props too: `onclick`, `onmousedown`, etc. (no `on:` prefix).
+
+For click hit areas on transparent shapes, use `fill="rgba(0,0,0,0.001)"` rather than `"transparent"` to ensure Konva registers the hit.
 
 ## Path aliases
 

@@ -81,61 +81,48 @@
 </script>
 
 <div class="neck-wrapper">
-	<Stage config={{ width: neckWidth, height: NECK_HEIGHT }}>
+	<Stage width={neckWidth} height={NECK_HEIGHT}>
 		<Layer>
 			<!-- Fretboard body -->
 			<Rect
-				config={{
-					x: 0,
-					y: 0,
-					width: neckWidth,
-					height: NECK_HEIGHT,
-					fill: '#2D1508',
-					cornerRadius: 4,
-				}}
+				x={0}
+				y={0}
+				width={neckWidth}
+				height={NECK_HEIGHT}
+				fill="#2D1508"
+				cornerRadius={4}
 			/>
 
 			<!-- Nut (thick bar at fret 0) -->
 			{#if startsAtFret === 0}
 				<Rect
-					config={{
-						x: PAD_H - 6,
-						y: PAD_V - FRET_OVERHANG,
-						width: 7,
-						height: STRING_SPACING * 5 + FRET_OVERHANG * 2,
-						fill: '#F0E0B0',
-						cornerRadius: 1,
-					}}
+					x={PAD_H - 6}
+					y={PAD_V - FRET_OVERHANG}
+					width={7}
+					height={STRING_SPACING * 5 + FRET_OVERHANG * 2}
+					fill="#F0E0B0"
+					cornerRadius={1}
 				/>
 			{/if}
 
 			<!-- Fret wires -->
 			{#each fretIndices as i}
 				<Line
-					config={{
-						points: [
-							fretWireX(i),
-							PAD_V - FRET_OVERHANG,
-							fretWireX(i),
-							NECK_HEIGHT - PAD_V + FRET_OVERHANG,
-						],
-						stroke: '#7A6040',
-						strokeWidth: 1.5,
-					}}
+					points={[fretWireX(i), PAD_V - FRET_OVERHANG, fretWireX(i), NECK_HEIGHT - PAD_V + FRET_OVERHANG]}
+					stroke="#7A6040"
+					strokeWidth={1.5}
 				/>
 			{/each}
 
 			<!-- Strings -->
 			{#each STRING_INDICES as s}
 				<Line
-					config={{
-						points: [PAD_H, stringY(s), neckWidth - PAD_H, stringY(s)],
-						stroke: STRING_COLORS[s],
-						strokeWidth: STRING_WIDTHS[s],
-						shadowColor: STRING_COLORS[s],
-						shadowBlur: 3,
-						shadowOpacity: 0.5,
-					}}
+					points={[PAD_H, stringY(s), neckWidth - PAD_H, stringY(s)]}
+					stroke={STRING_COLORS[s]}
+					strokeWidth={STRING_WIDTHS[s]}
+					shadowColor={STRING_COLORS[s]}
+					shadowBlur={3}
+					shadowOpacity={0.5}
 				/>
 			{/each}
 
@@ -144,32 +131,26 @@
 				{@const fn = startsAtFret + i}
 				{#if SINGLE_DOT_FRETS.has(fn)}
 					<Circle
-						config={{
-							x: noteCenterX(i),
-							y: PAD_V + STRING_SPACING * 2.5,
-							radius: 5,
-							fill: '#E8C84A',
-							opacity: 0.45,
-						}}
+						x={noteCenterX(i)}
+						y={PAD_V + STRING_SPACING * 2.5}
+						radius={5}
+						fill="#E8C84A"
+						opacity={0.45}
 					/>
 				{:else if DOUBLE_DOT_FRETS.has(fn)}
 					<Circle
-						config={{
-							x: noteCenterX(i),
-							y: PAD_V + STRING_SPACING * 1.5,
-							radius: 5,
-							fill: '#E8C84A',
-							opacity: 0.45,
-						}}
+						x={noteCenterX(i)}
+						y={PAD_V + STRING_SPACING * 1.5}
+						radius={5}
+						fill="#E8C84A"
+						opacity={0.45}
 					/>
 					<Circle
-						config={{
-							x: noteCenterX(i),
-							y: PAD_V + STRING_SPACING * 3.5,
-							radius: 5,
-							fill: '#E8C84A',
-							opacity: 0.45,
-						}}
+						x={noteCenterX(i)}
+						y={PAD_V + STRING_SPACING * 3.5}
+						radius={5}
+						fill="#E8C84A"
+						opacity={0.45}
 					/>
 				{/if}
 			{/each}
@@ -179,16 +160,14 @@
 				{@const fn = startsAtFret + i}
 				{#if i === 0 || LABEL_FRETS.has(fn)}
 					<Text
-						config={{
-							x: noteCenterX(i) - 14,
-							y: NECK_HEIGHT - PAD_V + 10,
-							width: 28,
-							align: 'center',
-							text: String(fn),
-							fontSize: 11,
-							fill: '#8A7050',
-							fontFamily: 'Ubuntu, sans-serif',
-						}}
+						x={noteCenterX(i) - 14}
+						y={NECK_HEIGHT - PAD_V + 10}
+						width={28}
+						align="center"
+						text={String(fn)}
+						fontSize={11}
+						fill="#8A7050"
+						fontFamily="Ubuntu, sans-serif"
 					/>
 				{/if}
 			{/each}
@@ -200,47 +179,42 @@
 					{@const noteData = selected ? getNote(stringIndex, fretIndex) : undefined}
 
 					<Group
-						config={{ x: noteCenterX(fretIndex), y: stringY(stringIndex) }}
-						on:click={() => handleClick(stringIndex, fretIndex)}
+						x={noteCenterX(fretIndex)}
+						y={stringY(stringIndex)}
+						onclick={() => handleClick(stringIndex, fretIndex)}
 					>
 						<!-- Transparent hit area covering the full cell -->
 						<Rect
-							config={{
-								x: -FRET_WIDTH / 2,
-								y: -STRING_SPACING / 2,
-								width: FRET_WIDTH,
-								height: STRING_SPACING,
-								fill: 'rgba(0,0,0,0.001)',
-							}}
+							x={-FRET_WIDTH / 2}
+							y={-STRING_SPACING / 2}
+							width={FRET_WIDTH}
+							height={STRING_SPACING}
+							fill="rgba(0,0,0,0.001)"
 						/>
 
 						{#if selected}
 							<Circle
-								config={{
-									radius: NOTE_RADIUS,
-									fill: '#2563EB',
-									stroke: '#BFDBFE',
-									strokeWidth: 1.5,
-									shadowColor: '#2563EB',
-									shadowBlur: 8,
-									shadowOpacity: 0.6,
-								}}
+								radius={NOTE_RADIUS}
+								fill="#2563EB"
+								stroke="#BFDBFE"
+								strokeWidth={1.5}
+								shadowColor="#2563EB"
+								shadowBlur={8}
+								shadowOpacity={0.6}
 							/>
 							{#if displayNoteLabels && noteData}
 								<Text
-									config={{
-										x: -NOTE_RADIUS,
-										y: -NOTE_RADIUS,
-										width: NOTE_RADIUS * 2,
-										height: NOTE_RADIUS * 2,
-										text: noteData.note.canonicalName,
-										fontSize: 10,
-										fontStyle: 'bold',
-										fill: '#FFFFFF',
-										fontFamily: 'Ubuntu, sans-serif',
-										align: 'center',
-										verticalAlign: 'middle',
-									}}
+									x={-NOTE_RADIUS}
+									y={-NOTE_RADIUS}
+									width={NOTE_RADIUS * 2}
+									height={NOTE_RADIUS * 2}
+									text={noteData.note.canonicalName}
+									fontSize={10}
+									fontStyle="bold"
+									fill="#FFFFFF"
+									fontFamily="Ubuntu, sans-serif"
+									align="center"
+									verticalAlign="middle"
 								/>
 							{/if}
 						{/if}
