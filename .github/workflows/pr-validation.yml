@@ -24,9 +24,15 @@ jobs:
 
       - name: Type check
         run: npm run check
+        env:
+          PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.PUBLIC_POSTHOG_PROJECT_TOKEN }}
+          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
 
       - name: Build
         run: npm run build
+        env:
+          PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.PUBLIC_POSTHOG_PROJECT_TOKEN }}
+          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
 
       - name: Unit tests
         run: npm run test:unit
@@ -57,6 +63,9 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.PUBLIC_POSTHOG_PROJECT_TOKEN }}
+          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
 
       - name: Deploy preview to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
