@@ -1,42 +1,75 @@
 <script lang="ts">
-	import { Chord } from '$types/Chord';
-	import { PITCH_CLASS_NAMES, type PitchClass } from '$types/Note';
+import posthog from "posthog-js";
+import { Chord } from "$types/Chord";
+import { PITCH_CLASS_NAMES, type PitchClass } from "$types/Note";
 
-	const OCTAVES = [0, 1, 2, 3, 4, 5, 6, 7];
+const OCTAVES = [0, 1, 2, 3, 4, 5, 6, 7];
 
-	type Row = { pc: PitchClass; octave: number };
+type Row = { pc: PitchClass; octave: number };
 
-	let rows = $state<Row[]>([
-		{ pc: 'C', octave: 4 },
-		{ pc: 'E', octave: 4 },
-		{ pc: 'G', octave: 4 },
-	]);
+let rows = $state<Row[]>([
+	{ pc: "C", octave: 4 },
+	{ pc: "E", octave: 4 },
+	{ pc: "G", octave: 4 },
+]);
 
-	let result = $derived.by(() => {
-		try {
-			const inputs = rows.map((r) => `${r.pc}${r.octave}`);
-			return { chord: new Chord(inputs), error: null };
-		} catch (err: unknown) {
-			return { chord: null, error: err instanceof Error ? err.message : String(err) };
-		}
+let result = $derived.by(() => {
+	try {
+		const inputs = rows.map((r) => `${r.pc}${r.octave}`);
+		return { chord: new Chord(inputs), error: null };
+	} catch (err: unknown) {
+		return {
+			chord: null,
+			error: err instanceof Error ? err.message : String(err),
+		};
+	}
+});
+
+let prevChordSymbol: string | null | undefined;
+
+$effect(() => {
+	const symbol = result.chord?.symbol() ?? null;
+	if (
+		symbol !== null &&
+		symbol !== prevChordSymbol &&
+		prevChordSymbol !== undefined
+	) {
+		posthog.capture("chord_inspected", {
+			chord_symbol: symbol,
+			chord_quality: JSON.stringify(result.chord?.quality()),
+			note_count: rows.length,
+			notes: rows.map((r) => `${r.pc}${r.octave}`),
+		});
+	}
+	prevChordSymbol = symbol;
+});
+
+function addRow() {
+	if (rows.length >= 6) return;
+	rows = [...rows, { pc: "C", octave: 4 }];
+	posthog.capture("chord_inspector_note_added", {
+		note_count: rows.length,
 	});
+}
 
-	function addRow() {
-		if (rows.length >= 6) return;
-		rows = [...rows, { pc: 'C', octave: 4 }];
-	}
+function removeRow(index: number) {
+	posthog.capture("chord_inspector_note_removed", {
+		note_count: rows.length - 1,
+	});
+	rows = rows.filter((_, i) => i !== index);
+}
 
-	function removeRow(index: number) {
-		rows = rows.filter((_, i) => i !== index);
-	}
+function updatePc(index: number, value: string) {
+	rows = rows.map((r, i) =>
+		i === index ? { ...r, pc: value as PitchClass } : r,
+	);
+}
 
-	function updatePc(index: number, value: string) {
-		rows = rows.map((r, i) => (i === index ? { ...r, pc: value as PitchClass } : r));
-	}
-
-	function updateOctave(index: number, value: string) {
-		rows = rows.map((r, i) => (i === index ? { ...r, octave: Number(value) } : r));
-	}
+function updateOctave(index: number, value: string) {
+	rows = rows.map((r, i) =>
+		i === index ? { ...r, octave: Number(value) } : r,
+	);
+}
 </script>
 
 <div class="inspector">
