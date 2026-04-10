@@ -1,77 +1,98 @@
 <script lang="ts">
-	import { Note, PITCH_CLASS_NAMES } from '$types/Note';
+import posthog from "posthog-js";
+import { Note, PITCH_CLASS_NAMES } from "$types/Note";
 
-	let maxSemitones = $state(5);
-	let inputValue = $state('');
-	let feedback = $state<{ text: string; correct: boolean } | null>(null);
-	let score = $state({ correct: 0, total: 0 });
-	let incorrects = $state<{ note: Note; offset: number; target: Note }[]>([]);
-	let advanceTimeout: ReturnType<typeof setTimeout> | null = null;
+let maxSemitones = $state(5);
+let inputValue = $state("");
+let feedback = $state<{ text: string; correct: boolean } | null>(null);
+let score = $state({ correct: 0, total: 0 });
+let incorrects = $state<{ note: Note; offset: number; target: Note }[]>([]);
+let advanceTimeout: ReturnType<typeof setTimeout> | null = null;
 
-	function getRandomNote(): Note {
-		const pc = PITCH_CLASS_NAMES[Math.floor(Math.random() * PITCH_CLASS_NAMES.length)];
-		return new Note(pc);
+function getRandomNote(): Note {
+	const pc =
+		PITCH_CLASS_NAMES[Math.floor(Math.random() * PITCH_CLASS_NAMES.length)];
+	return new Note(pc);
+}
+
+function getRandomOffset(max: number): number {
+	const range = max * 2;
+	let offset = Math.floor(Math.random() * range) - max;
+	if (offset >= 0) offset += 1;
+	return offset;
+}
+
+let currentNote = $state(getRandomNote());
+let semitones = $state(getRandomOffset(5)); // initial value matches default maxSemitones
+
+function advance() {
+	inputValue = "";
+	feedback = null;
+	currentNote = getRandomNote();
+	semitones = getRandomOffset(maxSemitones);
+}
+
+function submit(e?: SubmitEvent) {
+	e?.preventDefault();
+	const trimmed = inputValue.trim();
+	if (!trimmed) {
+		feedback = { text: "Enter a pitch-class (e.g. C, F#, Bb)", correct: false };
+		return;
 	}
 
-	function getRandomOffset(max: number): number {
-		const range = max * 2;
-		let offset = Math.floor(Math.random() * range) - max;
-		if (offset >= 0) offset += 1;
-		return offset;
+	let parsed: Note;
+	try {
+		parsed = new Note(trimmed);
+	} catch {
+		feedback = { text: "Invalid — try C, F#, or Bb", correct: false };
+		return;
 	}
 
-	let currentNote = $state(getRandomNote());
-	let semitones = $state(getRandomOffset(5)); // initial value matches default maxSemitones
+	const target = currentNote.transpose(semitones);
+	const correct = parsed.equalsPitchClass(target);
+	const targetName = target.toString().replace(/\d+$/, "");
 
-	function advance() {
-		inputValue = '';
-		feedback = null;
-		currentNote = getRandomNote();
-		semitones = getRandomOffset(maxSemitones);
+	if (correct) {
+		feedback = { text: `Correct! ${targetName}`, correct: true };
+		score = { correct: score.correct + 1, total: score.total + 1 };
+	} else {
+		feedback = { text: `Incorrect — answer: ${targetName}`, correct: false };
+		score = { ...score, total: score.total + 1 };
+		incorrects = [
+			...incorrects,
+			{ note: currentNote, offset: semitones, target },
+		];
 	}
 
-	function submit(e?: SubmitEvent) {
-		e?.preventDefault();
-		const trimmed = inputValue.trim();
-		if (!trimmed) {
-			feedback = { text: 'Enter a pitch-class (e.g. C, F#, Bb)', correct: false };
-			return;
-		}
+	posthog.capture("note_math_answered", {
+		correct,
+		root_note: currentNote.canonicalName,
+		semitone_offset: semitones,
+		correct_answer: targetName,
+		submitted_answer: trimmed,
+		max_semitones: maxSemitones,
+		score_correct: score.correct,
+		score_total: score.total,
+	});
 
-		let parsed: Note;
-		try {
-			parsed = new Note(trimmed);
-		} catch {
-			feedback = { text: 'Invalid — try C, F#, or Bb', correct: false };
-			return;
-		}
+	if (advanceTimeout) clearTimeout(advanceTimeout);
+	advanceTimeout = setTimeout(advance, 2000);
+}
 
-		const target = currentNote.transpose(semitones);
-		const correct = parsed.equalsPitchClass(target);
-		const targetName = target.toString().replace(/\d+$/, '');
+function onMaxSemitonesChange(e: Event) {
+	const newValue = parseInt((e.target as HTMLSelectElement).value, 10);
+	posthog.capture("note_math_settings_changed", {
+		setting: "max_semitones",
+		value: newValue,
+	});
+	maxSemitones = newValue;
+	if (advanceTimeout) clearTimeout(advanceTimeout);
+	advance();
+}
 
-		if (correct) {
-			feedback = { text: `Correct! ${targetName}`, correct: true };
-			score = { correct: score.correct + 1, total: score.total + 1 };
-		} else {
-			feedback = { text: `Incorrect — answer: ${targetName}`, correct: false };
-			score = { ...score, total: score.total + 1 };
-			incorrects = [...incorrects, { note: currentNote, offset: semitones, target }];
-		}
-
-		if (advanceTimeout) clearTimeout(advanceTimeout);
-		advanceTimeout = setTimeout(advance, 2000);
-	}
-
-	function onMaxSemitonesChange(e: Event) {
-		maxSemitones = parseInt((e.target as HTMLSelectElement).value, 10);
-		if (advanceTimeout) clearTimeout(advanceTimeout);
-		advance();
-	}
-
-	function offsetLabel(n: number): string {
-		return n > 0 ? `+${n}` : String(n);
-	}
+function offsetLabel(n: number): string {
+	return n > 0 ? `+${n}` : String(n);
+}
 </script>
 
 <svelte:head>

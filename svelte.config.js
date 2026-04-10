@@ -9,5 +9,8 @@ export default {
 		alias: {
 			$types: 'src/types',
 		},
+		paths: {
+			relative: false,
+		},
 	},
 };

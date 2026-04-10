@@ -1,54 +1,90 @@
 <script lang="ts">
-	import GuitarNeck from '$lib/components/GuitarNeck.svelte';
-	import { GuitarNeckEStandardTuning, type StringNote } from '$types/GuitarNeckEStandardTuning';
-	import { PITCH_CLASS_NAMES } from '$types/Note';
+import posthog from "posthog-js";
+import GuitarNeck from "$lib/components/GuitarNeck.svelte";
+import {
+	GuitarNeckEStandardTuning,
+	type StringNote,
+} from "$types/GuitarNeckEStandardTuning";
+import { PITCH_CLASS_NAMES } from "$types/Note";
 
-	let startsAtFret = $state(0);
-	let numberOfFrets = $state(3);
-	let score = $state({ correct: 0, total: 0 });
-	let incorrectNotes = $state<StringNote[]>([]);
-	let feedback = $state<{ text: string; correct: boolean } | null>(null);
-	let guessLocked = $state(false);
+let startsAtFret = $state(0);
+let numberOfFrets = $state(3);
+let score = $state({ correct: 0, total: 0 });
+let incorrectNotes = $state<StringNote[]>([]);
+let feedback = $state<{ text: string; correct: boolean } | null>(null);
+let guessLocked = $state(false);
 
-	function getRandomNote(): StringNote {
-		const stringIndex = Math.floor(Math.random() * 6);
-		const fretNumber = Math.floor(Math.random() * numberOfFrets) + startsAtFret;
-		return { stringIndex, note: GuitarNeckEStandardTuning[stringIndex][fretNumber] };
+function getRandomNote(): StringNote {
+	const stringIndex = Math.floor(Math.random() * 6);
+	const fretNumber = Math.floor(Math.random() * numberOfFrets) + startsAtFret;
+	return {
+		stringIndex,
+		note: GuitarNeckEStandardTuning[stringIndex][fretNumber],
+	};
+}
+
+let currentNote = $state(getRandomNote());
+
+function guess(pc: string) {
+	if (guessLocked) return;
+	guessLocked = true;
+
+	const correct = currentNote.note.canonicalName === pc;
+
+	if (correct) {
+		feedback = {
+			text: `Correct! — ${currentNote.note.toString()}`,
+			correct: true,
+		};
+		score = { correct: score.correct + 1, total: score.total + 1 };
+	} else {
+		feedback = {
+			text: `Incorrect — ${currentNote.note.toString()}`,
+			correct: false,
+		};
+		score = { ...score, total: score.total + 1 };
+		incorrectNotes = [...incorrectNotes, currentNote];
 	}
 
-	let currentNote = $state(getRandomNote());
+	posthog.capture("guess_the_note_answered", {
+		correct,
+		guessed_note: pc,
+		correct_note: currentNote.note.canonicalName,
+		string_index: currentNote.stringIndex,
+		starts_at_fret: startsAtFret,
+		number_of_frets: numberOfFrets,
+		score_correct: score.correct,
+		score_total: score.total,
+	});
 
-	function guess(pc: string) {
-		if (guessLocked) return;
-		guessLocked = true;
-
-		const correct = currentNote.note.canonicalName === pc;
-
-		if (correct) {
-			feedback = { text: `Correct! — ${currentNote.note.toString()}`, correct: true };
-			score = { correct: score.correct + 1, total: score.total + 1 };
-		} else {
-			feedback = { text: `Incorrect — ${currentNote.note.toString()}`, correct: false };
-			score = { ...score, total: score.total + 1 };
-			incorrectNotes = [...incorrectNotes, currentNote];
-		}
-
-		setTimeout(() => {
-			currentNote = getRandomNote();
-			feedback = null;
-			guessLocked = false;
-		}, 1200);
-	}
-
-	function onStartFretChange(e: Event) {
-		startsAtFret = parseInt((e.target as HTMLSelectElement).value, 10);
+	setTimeout(() => {
 		currentNote = getRandomNote();
-	}
+		feedback = null;
+		guessLocked = false;
+	}, 1200);
+}
 
-	function onNumFretsChange(e: Event) {
-		numberOfFrets = parseInt((e.target as HTMLSelectElement).value, 10);
-		currentNote = getRandomNote();
-	}
+function onStartFretChange(e: Event) {
+	const newValue = parseInt((e.target as HTMLSelectElement).value, 10);
+	posthog.capture("guess_the_note_settings_changed", {
+		setting: "starts_at_fret",
+		value: newValue,
+		number_of_frets: numberOfFrets,
+	});
+	startsAtFret = newValue;
+	currentNote = getRandomNote();
+}
+
+function onNumFretsChange(e: Event) {
+	const newValue = parseInt((e.target as HTMLSelectElement).value, 10);
+	posthog.capture("guess_the_note_settings_changed", {
+		setting: "number_of_frets",
+		value: newValue,
+		starts_at_fret: startsAtFret,
+	});
+	numberOfFrets = newValue;
+	currentNote = getRandomNote();
+}
 </script>
 
 <svelte:head>
