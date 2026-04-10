@@ -3,7 +3,7 @@
 {
 	"name": "solar-shell containerized",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-bookworm",
 	// More info: https://containers.dev/features.
 	"features": {
 		"ghcr.io/devcontainers-contrib/features/cloudflare-wrangler:1": {},

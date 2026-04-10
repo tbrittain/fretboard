@@ -18,7 +18,10 @@
     "konva": "^10.2.3",
     "svelte-konva": "^1.0.0"
   },
-  "devDependencies": {
+  "engines": {
+    "node": ">=24"
+  },
+"devDependencies": {
     "@biomejs/biome": "2.4.11",
     "@chromatic-com/storybook": "^5.1.1",
     "@storybook/addon-a11y": "^10.3.5",
