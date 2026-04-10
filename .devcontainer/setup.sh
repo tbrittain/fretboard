@@ -5,6 +5,9 @@ set -e
 npm install -g @anthropic-ai/claude-code
 npm install
 
+# Generate SvelteKit type declarations ($app types, path aliases, etc.)
+npx svelte-kit sync
+
 # Pre-create ~/.claude.json so Claude Code skips the onboarding wizard on first launch.
 # Auth is handled separately via the CLAUDE_CODE_OAUTH_TOKEN Codespaces secret.
 # Without this file, Claude treats every container rebuild as a first run and
