@@ -6,7 +6,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test:unit": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -21,9 +21,11 @@
   "engines": {
     "node": ">=24"
   },
-"devDependencies": {
+  "devDependencies": {
     "@biomejs/biome": "2.4.11",
     "@chromatic-com/storybook": "^5.1.1",
+    "@emnapi/core": "^1.9.2",
+    "@emnapi/runtime": "^1.9.2",
     "@storybook/addon-a11y": "^10.3.5",
     "@storybook/addon-docs": "^10.3.5",
     "@storybook/sveltekit": "^10.3.5",
@@ -39,5 +41,9 @@
     "vite": "^8.0.8",
     "vitest": "^4.1.4",
     "wrangler": "^4.81.1"
+  },
+  "optionalDependencies": {
+    "@emnapi/core": "1.9.2",
+    "@emnapi/runtime": "1.9.2"
   }
 }
