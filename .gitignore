@@ -15,6 +15,9 @@ build
 # Coverage
 coverage
 
+# Storybook
+storybook-static
+
 # Editor
 .idea
 .vscode
