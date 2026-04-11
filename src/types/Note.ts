@@ -39,6 +39,27 @@ const NOTE_TO_SEMITONE: Record<string, number> = {
 	"E#": 5,
 };
 
+// Export a helper to get the flat-preferred pitch-class name for a semitone value (e.g. 1 → 'Db', 10 → 'Bb')
+export function flatNameForSemitone(midi: number): string {
+	const semitone =
+		((midi % 12) + 12) % 12;
+	switch (semitone) {
+		case 0: return "C";
+		case 1: return "Db";
+		case 2: return "D";
+		case 3: return "Eb";
+		case 4: return "E";
+		case 5: return "F";
+		case 6: return "Gb";
+		case 7: return "G";
+		case 8: return "Ab";
+		case 9: return "A";
+		case 10: return "Bb";
+		case 11: return "B";
+		default: return "C";
+	}
+}
+
 // Export a helper to get the canonical pitch-class name for a semitone value
 export function canonicalNameForSemitone(midi: number): PitchClass {
 	const semitone =

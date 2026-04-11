@@ -1,13 +1,59 @@
 <script lang="ts">
+import { onMount, onDestroy } from "svelte";
 import posthog from "posthog-js";
-import { Note, PITCH_CLASS_NAMES } from "$types/Note";
+import { Note, PITCH_CLASS_NAMES, flatNameForSemitone } from "$types/Note";
 
+interface AttemptRecord {
+	note: string;
+	offset: number;
+	target: string;
+	answer: string;
+	correct: boolean;
+}
+
+const STORAGE_KEY = "note-math-history";
+const MAX_HISTORY = 500;
+const TIMER_SECONDS = 10;
+
+// Settings
 let maxSemitones = $state(5);
+let timerEnabled = $state(false);
+
+// Quiz state
 let inputValue = $state("");
 let feedback = $state<{ text: string; correct: boolean } | null>(null);
-let score = $state({ correct: 0, total: 0 });
-let incorrects = $state<{ note: Note; offset: number; target: Note }[]>([]);
+let answered = $state(false);
+let sessionScore = $state({ correct: 0, total: 0 });
+let currentNote = $state(getRandomNote());
+let semitones = $state(getRandomOffset(5));
 let advanceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Timer state
+let timerRemaining = $state(TIMER_SECONDS);
+let timerInterval: ReturnType<typeof setInterval> | null = null;
+let timerPct = $derived(timerRemaining / TIMER_SECONDS);
+
+// History
+let allHistory = $state<AttemptRecord[]>([]);
+let allTimeScore = $derived({
+	correct: allHistory.filter((a) => a.correct).length,
+	total: allHistory.length,
+});
+let recentHistory = $derived(allHistory.slice(0, 20));
+
+onMount(() => {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (raw) allHistory = JSON.parse(raw);
+	} catch {
+		/* ignore */
+	}
+});
+
+onDestroy(() => {
+	stopTimer();
+	if (advanceTimeout) clearTimeout(advanceTimeout);
+});
 
 function getRandomNote(): Note {
 	const pc =
@@ -22,18 +68,76 @@ function getRandomOffset(max: number): number {
 	return offset;
 }
 
-let currentNote = $state(getRandomNote());
-let semitones = $state(getRandomOffset(5)); // initial value matches default maxSemitones
+// Use flat names when the offset is negative (going down), sharps when going up
+function targetDisplayName(note: Note, offset: number): string {
+	const target = note.transpose(offset);
+	return offset < 0 ? flatNameForSemitone(target.toMidi()) : target.canonicalName;
+}
+
+function stopTimer() {
+	if (timerInterval) {
+		clearInterval(timerInterval);
+		timerInterval = null;
+	}
+}
+
+function startTimer() {
+	stopTimer();
+	if (!timerEnabled) return;
+	timerRemaining = TIMER_SECONDS;
+	timerInterval = setInterval(() => {
+		timerRemaining = Math.max(0, timerRemaining - 1);
+		if (timerRemaining === 0) {
+			stopTimer();
+			onTimeout();
+		}
+	}, 1000);
+}
+
+function onTimeout() {
+	if (answered) return;
+	answered = true;
+	const tName = targetDisplayName(currentNote, semitones);
+	feedback = { text: `Time's up! Answer: ${tName}`, correct: false };
+	sessionScore = { ...sessionScore, total: sessionScore.total + 1 };
+	recordAttempt({
+		note: currentNote.canonicalName,
+		offset: semitones,
+		target: tName,
+		answer: "—",
+		correct: false,
+	});
+	scheduleAdvance();
+}
+
+function scheduleAdvance() {
+	if (advanceTimeout) clearTimeout(advanceTimeout);
+	advanceTimeout = setTimeout(advance, 2000);
+}
 
 function advance() {
 	inputValue = "";
 	feedback = null;
+	answered = false;
 	currentNote = getRandomNote();
 	semitones = getRandomOffset(maxSemitones);
+	startTimer();
+}
+
+function recordAttempt(attempt: AttemptRecord) {
+	const updated = [attempt, ...allHistory].slice(0, MAX_HISTORY);
+	allHistory = updated;
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+	} catch {
+		/* ignore */
+	}
 }
 
 function submit(e?: SubmitEvent) {
 	e?.preventDefault();
+	if (answered) return;
+
 	const trimmed = inputValue.trim();
 	if (!trimmed) {
 		feedback = { text: "Enter a pitch-class (e.g. C, F#, Bb)", correct: false };
@@ -48,35 +152,43 @@ function submit(e?: SubmitEvent) {
 		return;
 	}
 
+	stopTimer();
+	answered = true;
+
 	const target = currentNote.transpose(semitones);
 	const correct = parsed.equalsPitchClass(target);
-	const targetName = target.toString().replace(/\d+$/, "");
+	const tName = targetDisplayName(currentNote, semitones);
+	const userAnswer =
+		trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 
 	if (correct) {
-		feedback = { text: `Correct! ${targetName}`, correct: true };
-		score = { correct: score.correct + 1, total: score.total + 1 };
+		feedback = { text: `Correct! ${tName}`, correct: true };
+		sessionScore = { correct: sessionScore.correct + 1, total: sessionScore.total + 1 };
 	} else {
-		feedback = { text: `Incorrect — answer: ${targetName}`, correct: false };
-		score = { ...score, total: score.total + 1 };
-		incorrects = [
-			...incorrects,
-			{ note: currentNote, offset: semitones, target },
-		];
+		feedback = { text: `Incorrect — answer: ${tName}`, correct: false };
+		sessionScore = { ...sessionScore, total: sessionScore.total + 1 };
 	}
+
+	recordAttempt({
+		note: currentNote.canonicalName,
+		offset: semitones,
+		target: tName,
+		answer: userAnswer,
+		correct,
+	});
 
 	posthog.capture("note_math_answered", {
 		correct,
 		root_note: currentNote.canonicalName,
 		semitone_offset: semitones,
-		correct_answer: targetName,
+		correct_answer: tName,
 		submitted_answer: trimmed,
 		max_semitones: maxSemitones,
-		score_correct: score.correct,
-		score_total: score.total,
+		score_correct: sessionScore.correct,
+		score_total: sessionScore.total,
 	});
 
-	if (advanceTimeout) clearTimeout(advanceTimeout);
-	advanceTimeout = setTimeout(advance, 2000);
+	scheduleAdvance();
 }
 
 function onMaxSemitonesChange(e: Event) {
@@ -88,6 +200,24 @@ function onMaxSemitonesChange(e: Event) {
 	maxSemitones = newValue;
 	if (advanceTimeout) clearTimeout(advanceTimeout);
 	advance();
+}
+
+function toggleTimer() {
+	timerEnabled = !timerEnabled;
+	if (timerEnabled) {
+		if (!answered) startTimer();
+	} else {
+		stopTimer();
+	}
+}
+
+function clearHistory() {
+	allHistory = [];
+	try {
+		localStorage.removeItem(STORAGE_KEY);
+	} catch {
+		/* ignore */
+	}
 }
 
 function offsetLabel(n: number): string {
@@ -103,14 +233,33 @@ function offsetLabel(n: number): string {
 	<h2>Note Math</h2>
 	<p class="subtitle">Name the pitch class after applying the semitone offset</p>
 
-	<label class="control">
-		Max semitones
-		<select value={maxSemitones} onchange={onMaxSemitonesChange}>
-			{#each [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as n}
-				<option value={n}>{n}</option>
-			{/each}
-		</select>
-	</label>
+	<div class="controls">
+		<label class="control">
+			Max semitones
+			<select value={maxSemitones} onchange={onMaxSemitonesChange}>
+				{#each [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as n}
+					<option value={n}>{n}</option>
+				{/each}
+			</select>
+		</label>
+
+		<label class="control timer-toggle">
+			<input type="checkbox" checked={timerEnabled} onchange={toggleTimer} />
+			Timer ({TIMER_SECONDS}s)
+		</label>
+	</div>
+
+	{#if timerEnabled}
+		<div class="timer-wrap">
+			<div
+				class="timer-bar"
+				class:warning={timerPct < 0.4 && timerPct >= 0.2}
+				class:danger={timerPct < 0.2}
+				style:width="{timerPct * 100}%"
+			></div>
+			<span class="timer-label">{timerRemaining}s</span>
+		</div>
+	{/if}
 
 	<div class="problem">
 		<span class="note-name">{currentNote.canonicalName}</span>
@@ -130,24 +279,52 @@ function offsetLabel(n: number): string {
 	</div>
 
 	{#if feedback}
-		<div class="feedback" class:correct={feedback.correct} class:incorrect={!feedback.correct}>
+		<div
+			class="feedback"
+			class:correct={feedback.correct}
+			class:incorrect={!feedback.correct}
+		>
 			{feedback.text}
 		</div>
 	{:else}
 		<div class="feedback-placeholder"></div>
 	{/if}
 
-	<div class="score">Score: {score.correct} / {score.total}</div>
+	<div class="scores">
+		<span class="score-item">
+			<span class="score-label">Session</span>
+			<span class="score-value">{sessionScore.correct} / {sessionScore.total}</span>
+		</span>
+		{#if allTimeScore.total > 0}
+			<span class="score-sep">|</span>
+			<span class="score-item">
+				<span class="score-label">All-time</span>
+				<span class="score-value">{allTimeScore.correct} / {allTimeScore.total}</span>
+			</span>
+		{/if}
+	</div>
 
-	{#if incorrects.length > 0}
-		<div class="incorrects">
-			<h3>Incorrect Attempts</h3>
+	{#if recentHistory.length > 0}
+		<div class="history">
+			<div class="history-header">
+				<h3>Recent Attempts</h3>
+				<button class="clear-btn" onclick={clearHistory}>Clear history</button>
+			</div>
 			<ul>
-				{#each incorrects as item}
-					<li>
-						{item.note.canonicalName}
-						{offsetLabel(item.offset)}
-						&rarr; {item.target.toString().replace(/\d+$/, '')}
+				{#each recentHistory as item}
+					<li class:hist-correct={item.correct} class:hist-incorrect={!item.correct}>
+						<span class="hist-icon">{item.correct ? "✓" : "✗"}</span>
+						<span class="hist-eq">
+							{item.note}
+							{offsetLabel(item.offset)}
+							&rarr;
+							{item.target}
+						</span>
+						{#if !item.correct}
+							<span class="hist-you">
+								{item.answer === "—" ? "(timeout)" : `(you: ${item.answer})`}
+							</span>
+						{/if}
 					</li>
 				{/each}
 			</ul>
@@ -176,12 +353,30 @@ function offsetLabel(n: number): string {
 		font-size: 0.875rem;
 	}
 
+	.controls {
+		display: flex;
+		align-items: center;
+		gap: 1.5rem;
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+
 	.control {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.9rem;
 		color: #94a3b8;
+	}
+
+	.timer-toggle {
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.timer-toggle input[type="checkbox"] {
+		cursor: pointer;
+		accent-color: #0891b2;
 	}
 
 	select {
@@ -191,6 +386,46 @@ function offsetLabel(n: number): string {
 		border-radius: 4px;
 		padding: 0.3rem 0.5rem;
 		font-family: inherit;
+	}
+
+	/* Timer bar */
+	.timer-wrap {
+		width: 100%;
+		max-width: 400px;
+		position: relative;
+		height: 6px;
+		background: #1e293b;
+		border-radius: 3px;
+		overflow: hidden;
+		display: flex;
+		align-items: center;
+	}
+
+	.timer-bar {
+		position: absolute;
+		left: 0;
+		top: 0;
+		height: 100%;
+		background: #0891b2;
+		border-radius: 3px;
+		transition: width 0.9s linear, background 0.3s;
+	}
+
+	.timer-bar.warning {
+		background: #f59e0b;
+	}
+
+	.timer-bar.danger {
+		background: #ef4444;
+	}
+
+	.timer-label {
+		position: absolute;
+		right: 0;
+		top: -1.4rem;
+		font-size: 0.75rem;
+		color: #64748b;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.problem {
@@ -285,18 +520,52 @@ function offsetLabel(n: number): string {
 		border: 1px solid #991b1b;
 	}
 
-	.score {
-		font-size: 1rem;
+	/* Scores */
+	.scores {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		font-size: 0.9rem;
 		color: #64748b;
 	}
 
-	.incorrects {
-		width: 100%;
-		max-width: 400px;
+	.score-item {
+		display: flex;
+		gap: 0.4rem;
+		align-items: baseline;
 	}
 
-	.incorrects h3 {
-		margin: 0 0 0.4rem;
+	.score-label {
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.score-value {
+		font-weight: 600;
+		color: #94a3b8;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.score-sep {
+		color: #334155;
+	}
+
+	/* History */
+	.history {
+		width: 100%;
+		max-width: 420px;
+	}
+
+	.history-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.5rem;
+	}
+
+	.history-header h3 {
+		margin: 0;
 		font-size: 0.85rem;
 		font-weight: 500;
 		color: #64748b;
@@ -304,15 +573,63 @@ function offsetLabel(n: number): string {
 		letter-spacing: 0.05em;
 	}
 
-	.incorrects ul {
-		list-style: disc;
-		padding-left: 1.25rem;
-		margin: 0;
-		font-size: 0.875rem;
-		color: #475569;
+	.clear-btn {
+		background: none;
+		border: 1px solid #334155;
+		color: #64748b;
+		font-size: 0.75rem;
+		font-family: inherit;
+		padding: 0.2rem 0.5rem;
+		border-radius: 4px;
+		cursor: pointer;
 	}
 
-	.incorrects li {
-		margin: 0.2rem 0;
+	.clear-btn:hover {
+		border-color: #475569;
+		color: #94a3b8;
+	}
+
+	.history ul {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.history li {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		padding: 0.2rem 0.5rem;
+		border-radius: 4px;
+	}
+
+	.hist-correct {
+		color: #4ade80;
+		background: #052e1640;
+	}
+
+	.hist-incorrect {
+		color: #f87171;
+		background: #2d0a0a40;
+	}
+
+	.hist-icon {
+		font-size: 0.75rem;
+		width: 1em;
+		flex-shrink: 0;
+	}
+
+	.hist-eq {
+		flex: 1;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.hist-you {
+		font-size: 0.8rem;
+		opacity: 0.7;
 	}
 </style>
