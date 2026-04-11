@@ -1,7 +1,7 @@
 <script lang="ts">
-import { onMount, onDestroy } from "svelte";
 import posthog from "posthog-js";
-import { Note, PITCH_CLASS_NAMES, flatNameForSemitone } from "$types/Note";
+import { onDestroy, onMount } from "svelte";
+import { flatNameForSemitone, Note, PITCH_CLASS_NAMES } from "$types/Note";
 
 interface AttemptRecord {
 	note: string;
@@ -71,7 +71,9 @@ function getRandomOffset(max: number): number {
 // Use flat names when the offset is negative (going down), sharps when going up
 function targetDisplayName(note: Note, offset: number): string {
 	const target = note.transpose(offset);
-	return offset < 0 ? flatNameForSemitone(target.toMidi()) : target.canonicalName;
+	return offset < 0
+		? flatNameForSemitone(target.toMidi())
+		: target.canonicalName;
 }
 
 function stopTimer() {
@@ -163,7 +165,10 @@ function submit(e?: SubmitEvent) {
 
 	if (correct) {
 		feedback = { text: `Correct! ${tName}`, correct: true };
-		sessionScore = { correct: sessionScore.correct + 1, total: sessionScore.total + 1 };
+		sessionScore = {
+			correct: sessionScore.correct + 1,
+			total: sessionScore.total + 1,
+		};
 	} else {
 		feedback = { text: `Incorrect — answer: ${tName}`, correct: false };
 		sessionScore = { ...sessionScore, total: sessionScore.total + 1 };
