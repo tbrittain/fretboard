@@ -17,7 +17,9 @@ A client-side guitar learning app built with SvelteKit + svelte-konva. All guita
 | Framework | SvelteKit 2, Svelte 5 |
 | Canvas | svelte-konva + konva |
 | Adapter | `@sveltejs/adapter-cloudflare` v7+ |
-| Tests | Vitest (node env, no DOM) |
+| Unit tests | Vitest (node env, no DOM) |
+| Component stories | Storybook (`npm run storybook`) |
+| Visual regression | Chromatic (runs on CI against Storybook stories) |
 | Linting/Formatting | Biome (replaces ESLint + Prettier; covers `.ts` and `.svelte` files) |
 | Deploy | `wrangler pages deploy .svelte-kit/cloudflare` |
 
@@ -93,6 +95,37 @@ The test files in `src/types/__tests__/` use relative imports and run in Node �
 1. Create `src/routes/<path>/+page.svelte`
 2. Add the link to the `navLinks` array in `src/routes/+layout.svelte`
 3. No `+page.ts` needed unless you have page-level state setup; never add `+page.server.ts`
+
+## Component guidelines
+
+### Every new component needs a Storybook story
+
+All new components in `src/lib/components/` must have a corresponding `.stories.ts` file. Stories serve as the primary visual contract for a component — they document its props, show its states, and are the mechanism by which Chromatic catches visual regressions in CI.
+
+A story file should cover:
+- The default/empty state
+- Representative prop combinations (especially boundary values)
+- Any visually distinct states (e.g. selected vs unselected, error state)
+
+Chromatic runs against these stories automatically on each push. Visual changes require manual review and acceptance before a PR can merge. **This is intentional** — it keeps visual regressions from sneaking through unnoticed.
+
+### Non-trivial components belong in `src/lib/components/`, not inline in pages
+
+If a component has meaningful internal state, canvas layout logic, or more than a handful of props, it should be a standalone `.svelte` file in `src/lib/components/` — not defined inline within a route's `+page.svelte`. This keeps pages thin (routing + composition only) and makes the component independently testable via Storybook.
+
+A rough heuristic: if you find yourself reaching for `$state` or `$derived` while writing markup inside `+page.svelte`, that logic probably belongs in a named component.
+
+### Extract non-trivial logic to pure TypeScript
+
+There are no component-level unit tests in this project, by design. Svelte components are tested visually through Storybook and Chromatic.
+
+Pure TypeScript — anything that does not depend on Svelte reactivity or the DOM — should live in `src/types/` or `src/lib/` as plain `.ts` files and be covered by Vitest unit tests. This includes:
+
+- Musical computations (interval math, chord quality detection, voicing logic)
+- Data transformation (mapping fret numbers to note arrays, filtering, sorting)
+- Any conditional logic complex enough to have edge cases worth specifying
+
+If you find yourself writing non-trivial logic inside a `$derived` or a component function, ask whether it can be pulled into a pure function and tested in isolation. The goal is to keep components as thin wrappers over well-tested logic.
 
 ## GuitarNeck component
 
