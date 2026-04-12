@@ -9,6 +9,7 @@ const navLinks = [
 	{ href: "/", label: "Home" },
 	{ href: "/quizzes/guess-the-note", label: "Guess The Note" },
 	{ href: "/quizzes/note-math", label: "Note Math" },
+	{ href: "/quizzes/interval-key-context", label: "Key Context Quiz" },
 ];
 </script>
 
