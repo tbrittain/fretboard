@@ -2,8 +2,13 @@
 import posthog from "posthog-js";
 import { onDestroy, onMount } from "svelte";
 import GuitarNeck from "$lib/components/GuitarNeck.svelte";
-import { type StringNote } from "$types/GuitarNeckEStandardTuning";
-import { Scale, SCALE_FORMULAS, ALL_SCALE_FORMULAS, type ScaleFormula } from "$types/Scale";
+import type { StringNote } from "$types/GuitarNeckEStandardTuning";
+import {
+	ALL_SCALE_FORMULAS,
+	SCALE_FORMULAS,
+	Scale,
+	type ScaleFormula,
+} from "$types/Scale";
 
 type Phase = "name" | "find";
 
@@ -29,8 +34,18 @@ const FIND_FRETS = 12;
 
 // All 12 roots with conventional spelling (Bb not A#, Db not C#, etc.)
 const ROOTS = [
-	"C", "G", "D", "A", "E", "B", "F#",
-	"Db", "Ab", "Eb", "Bb", "F",
+	"C",
+	"G",
+	"D",
+	"A",
+	"E",
+	"B",
+	"F#",
+	"Db",
+	"Ab",
+	"Eb",
+	"Bb",
+	"F",
 ] as const;
 
 function pitchClass(midi: number): number {
@@ -48,7 +63,10 @@ function generateQuestion(formulas: readonly ScaleFormula[]): {
 	const scale = new Scale(rootStr, formula);
 
 	// Pick 3–4 diatonic degrees (always including root at index 0)
-	const count = Math.min(3 + Math.floor(Math.random() * 2), formula.intervals.length);
+	const count = Math.min(
+		3 + Math.floor(Math.random() * 2),
+		formula.intervals.length,
+	);
 	const nonRootIdxs = formula.intervals.slice(1).map((_, i) => i + 1);
 	const shuffled = [...nonRootIdxs].sort(() => Math.random() - 0.5);
 	const selectedIdxs = [0, ...shuffled.slice(0, count - 1)];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Note } from "../Note";
-import { Scale, SCALE_FORMULAS, ALL_SCALE_FORMULAS } from "../Scale";
+import { ALL_SCALE_FORMULAS, SCALE_FORMULAS, Scale } from "../Scale";
 
 // ---------------------------------------------------------------------------
 // SCALE_FORMULAS catalogue
@@ -34,7 +34,13 @@ describe("SCALE_FORMULAS", () => {
 	it("Major formula has the expected intervals and labels", () => {
 		expect(SCALE_FORMULAS.MAJOR.intervals).toEqual([0, 2, 4, 5, 7, 9, 11]);
 		expect(SCALE_FORMULAS.MAJOR.degreeLabels).toEqual([
-			"1", "2", "3", "4", "5", "6", "7",
+			"1",
+			"2",
+			"3",
+			"4",
+			"5",
+			"6",
+			"7",
 		]);
 	});
 
@@ -274,9 +280,7 @@ describe("Scale.transpose()", () => {
 describe("Scale.toString()", () => {
 	it("uses flat name for flat roots", () => {
 		expect(new Scale("Bb", SCALE_FORMULAS.MAJOR).toString()).toBe("Bb Major");
-		expect(new Scale("Eb", SCALE_FORMULAS.DORIAN).toString()).toBe(
-			"Eb Dorian",
-		);
+		expect(new Scale("Eb", SCALE_FORMULAS.DORIAN).toString()).toBe("Eb Dorian");
 	});
 
 	it("uses sharp name for sharp-context roots", () => {
@@ -293,7 +297,9 @@ describe("Scale.toString()", () => {
 
 describe("Scale.allPitchClassNames()", () => {
 	it("returns 12 entries", () => {
-		expect(new Scale("C", SCALE_FORMULAS.MAJOR).allPitchClassNames()).toHaveLength(12);
+		expect(
+			new Scale("C", SCALE_FORMULAS.MAJOR).allPitchClassNames(),
+		).toHaveLength(12);
 	});
 
 	it("uses sharp names for sharp-context scale", () => {

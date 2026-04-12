@@ -126,11 +126,13 @@ export class Scale {
 			this.preferFlats = preferFlats ?? Scale.inferPrefersFlatsFromString(root);
 			this.root = new Note(root);
 		} else if (root instanceof Note) {
-			this.preferFlats = preferFlats ?? Scale.inferPrefersFlatsFromPitchClass(root);
+			this.preferFlats =
+				preferFlats ?? Scale.inferPrefersFlatsFromPitchClass(root);
 			this.root = root;
 		} else {
 			const n = new Note(root);
-			this.preferFlats = preferFlats ?? Scale.inferPrefersFlatsFromPitchClass(n);
+			this.preferFlats =
+				preferFlats ?? Scale.inferPrefersFlatsFromPitchClass(n);
 			this.root = n;
 		}
 		this.formula = formula;
@@ -203,7 +205,7 @@ export class Scale {
 		const notePc = ((note.toMidi() % 12) + 12) % 12;
 		const rootPc = ((this.root.toMidi() % 12) + 12) % 12;
 		const idx = this.formula.intervals.findIndex(
-			(i) => ((rootPc + i) % 12) === notePc,
+			(i) => (rootPc + i) % 12 === notePc,
 		);
 		return idx === -1 ? null : this.formula.degreeLabels[idx];
 	}
@@ -263,7 +265,10 @@ export class Scale {
 	 * Returns the pitch-class name (using this scale's naming convention) for
 	 * a raw semitone value 0–11.  Useful for mapping button indices to labels.
 	 */
-	static pitchClassNameForSemitone(semitone: number, preferFlats: boolean): string {
+	static pitchClassNameForSemitone(
+		semitone: number,
+		preferFlats: boolean,
+	): string {
 		return preferFlats
 			? flatNameForSemitone(semitone)
 			: canonicalNameForSemitone(semitone);
