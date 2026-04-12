@@ -37,6 +37,10 @@ Using `--save-optional` does NOT work — npm won't resolve optional packages it
 
 ## Node version mismatch (Claude Code environment runs Node 22, repo requires >=24)
 
+**Discovered:** 2026-04-11
+
+> **Check before acting on this:** Run `node --version` at the start of a session. If the Claude Code execution environment is on Node 24+, this issue is resolved and this entry can be removed or revised — it will be out of date.
+
 **Symptom:** `npm install` fails with a Node engine version error, preventing devDependencies from being installed. This breaks the pre-commit hook (lefthook + biome), which allows lint errors to reach CI undetected.
 
 **Cause:** Claude Code's execution environment runs **Node 22**. The repo's `package.json` declares `"engines": { "node": ">=24" }`. When `.npmrc` contained `engine-strict=true`, npm hard-failed on version mismatch.
