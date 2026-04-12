@@ -242,11 +242,8 @@ export class Scale {
 	private static inferPrefersFlatsFromString(root: string): boolean {
 		const trimmed = root.trim();
 		// Matches a lowercase 'b' after the letter (but not the note 'B' natural)
-		return (
-			trimmed.length > 1 &&
-			trimmed[1] === "b" &&
-			trimmed[0].toUpperCase() !== "B"
-		);
+		// "B" natural is already excluded by the length > 1 check (it has length 1)
+		return trimmed.length > 1 && trimmed[1] === "b";
 	}
 
 	/**

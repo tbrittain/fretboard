@@ -118,10 +118,12 @@ To run manually:
 node_modules/.bin/biome check --write .
 ```
 
-**Important:** `.npmrc` sets `engine-strict=true`, which requires Node 24+. If `npm install` fails due to a Node version mismatch, use:
+## After installing dependencies
+
+After running `npm install`, always run:
 
 ```sh
-npm_config_engine_strict=false npm install
+node_modules/.bin/svelte-kit sync
 ```
 
-This installs devDependencies (including `lefthook` and `@biomejs/biome`) so the pre-commit hook works correctly.
+This generates `.svelte-kit/tsconfig.json` (and other SvelteKit type artifacts) that the root `tsconfig.json` extends. Without it, TypeScript and Vitest will fail with `Tsconfig not found` errors. This is part of the GitHub Codespaces `setup.sh` script but must be run manually in other environments.
