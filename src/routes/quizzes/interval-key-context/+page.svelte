@@ -3,11 +3,11 @@ import posthog from "posthog-js";
 import { onDestroy, onMount } from "svelte";
 import GuitarNeck from "$lib/components/GuitarNeck.svelte";
 import { type StringNote } from "$types/GuitarNeckEStandardTuning";
-import { Note, PITCH_CLASS_NAMES } from "$types/Note";
+import { Scale, SCALE_FORMULAS, ALL_SCALE_FORMULAS, type ScaleFormula } from "$types/Scale";
 
 type Phase = "name" | "find";
 
-interface ScaleDegree {
+interface QuizDegree {
 	label: string;
 	semitones: number;
 }
@@ -27,74 +27,78 @@ const MAX_HISTORY = 500;
 const TIMER_SECONDS = 15;
 const FIND_FRETS = 12;
 
-const MAJOR_KEYS = [
-	"C",
-	"G",
-	"D",
-	"A",
-	"E",
-	"B",
-	"F#",
-	"Db",
-	"Ab",
-	"Eb",
-	"Bb",
-	"F",
+// All 12 roots with conventional spelling (Bb not A#, Db not C#, etc.)
+const ROOTS = [
+	"C", "G", "D", "A", "E", "B", "F#",
+	"Db", "Ab", "Eb", "Bb", "F",
 ] as const;
-type MajorKey = (typeof MAJOR_KEYS)[number];
 
-const ALL_DEGREES: ScaleDegree[] = [
-	{ label: "1", semitones: 0 },
-	{ label: "2", semitones: 2 },
-	{ label: "♭3", semitones: 3 },
-	{ label: "3", semitones: 4 },
-	{ label: "4", semitones: 5 },
-	{ label: "♭5", semitones: 6 },
-	{ label: "5", semitones: 7 },
-	{ label: "♭6", semitones: 8 },
-	{ label: "6", semitones: 9 },
-	{ label: "♭7", semitones: 10 },
-	{ label: "7", semitones: 11 },
-];
-
-function generateQuestion(): {
-	key: MajorKey;
-	degrees: ScaleDegree[];
-	notes: string[];
-} {
-	const key = MAJOR_KEYS[Math.floor(Math.random() * MAJOR_KEYS.length)];
-	const root = new Note(key);
-	const count = 3 + Math.floor(Math.random() * 2); // 3 or 4 degrees
-	const nonRoot = ALL_DEGREES.filter((d) => d.semitones !== 0);
-	const shuffled = [...nonRoot].sort(() => Math.random() - 0.5);
-	const selected = [ALL_DEGREES[0], ...shuffled.slice(0, count - 1)];
-	selected.sort((a, b) => a.semitones - b.semitones);
-	const notes = selected.map((d) => root.transpose(d.semitones).canonicalName);
-	return { key, degrees: selected, notes };
+function pitchClass(midi: number): number {
+	return ((midi % 12) + 12) % 12;
 }
 
-// Initialize first question synchronously (SSR is disabled)
-const _init = generateQuestion();
+function generateQuestion(formulas: readonly ScaleFormula[]): {
+	scale: Scale;
+	degrees: QuizDegree[];
+	targetSemitones: number[];
+	targetDisplayNames: string[];
+} {
+	const formula = formulas[Math.floor(Math.random() * formulas.length)];
+	const rootStr = ROOTS[Math.floor(Math.random() * ROOTS.length)];
+	const scale = new Scale(rootStr, formula);
+
+	// Pick 3–4 diatonic degrees (always including root at index 0)
+	const count = Math.min(3 + Math.floor(Math.random() * 2), formula.intervals.length);
+	const nonRootIdxs = formula.intervals.slice(1).map((_, i) => i + 1);
+	const shuffled = [...nonRootIdxs].sort(() => Math.random() - 0.5);
+	const selectedIdxs = [0, ...shuffled.slice(0, count - 1)];
+	selectedIdxs.sort((a, b) => a - b);
+
+	const degrees: QuizDegree[] = selectedIdxs.map((idx) => ({
+		label: formula.degreeLabels[idx],
+		semitones: formula.intervals[idx],
+	}));
+
+	const rootPc = pitchClass(scale.root.toMidi());
+	const targetSemitones = degrees.map((d) => (rootPc + d.semitones) % 12);
+	const targetDisplayNames = degrees.map((d) =>
+		scale.noteName(scale.root.transpose(d.semitones)),
+	);
+
+	return { scale, degrees, targetSemitones, targetDisplayNames };
+}
+
+// Initialize first question synchronously (SSR disabled)
+const _init = generateQuestion([SCALE_FORMULAS.MAJOR]);
 
 // Settings
 let timerEnabled = $state(false);
+let enabledScaleNames = $state(new Set<string>(["Major"]));
 
 // Current question
-let currentKey = $state<MajorKey>(_init.key);
-let currentDegrees = $state<ScaleDegree[]>(_init.degrees);
-let targetNotes = $state<string[]>(_init.notes);
+let currentScale = $state<Scale>(_init.scale);
+let currentDegrees = $state<QuizDegree[]>(_init.degrees);
+let targetSemitones = $state<number[]>(_init.targetSemitones);
+let targetDisplayNames = $state<string[]>(_init.targetDisplayNames);
+
+// Derived from current question / settings
+let enabledFormulas = $derived(
+	ALL_SCALE_FORMULAS.filter((f) => enabledScaleNames.has(f.name)),
+);
+let buttonLabels = $derived(currentScale.allPitchClassNames());
+let degreesLabel = $derived(currentDegrees.map((d) => d.label).join("–"));
 
 // Phase
 let phase = $state<Phase>("name");
 
-// Phase 1 (name) state
-let foundInNamePhase = $state(new Set<string>());
+// Phase 1 (name) state — track by semitone (0–11), not string name
+let foundInNamePhase = $state(new Set<number>());
 let namePhaseErrors = $state(0);
-let wrongFlashNote = $state<string | null>(null);
+let wrongFlashIndex = $state<number | null>(null);
 
 // Phase 2 (find) state
 let foundOnNeck = $state<StringNote[]>([]);
-let foundPitchClassesOnNeck = $state(new Set<string>());
+let foundPitchClassesOnNeck = $state(new Set<number>());
 let findPhaseErrors = $state(0);
 
 // Global quiz state
@@ -117,9 +121,6 @@ let allTimeScore = $derived({
 	total: allHistory.length,
 });
 let recentHistory = $derived(allHistory.slice(0, 20));
-
-// Derived labels
-let degreesLabel = $derived(currentDegrees.map((d) => d.label).join("–"));
 
 onMount(() => {
 	try {
@@ -161,14 +162,14 @@ function onTimeout() {
 	if (phaseLocked || phase !== "name") return;
 	phaseLocked = true;
 	feedback = {
-		text: `Time's up! Answer: ${targetNotes.join(", ")}`,
+		text: `Time's up! Answer: ${targetDisplayNames.join(", ")}`,
 		correct: false,
 	};
 	sessionScore = { ...sessionScore, total: sessionScore.total + 1 };
 	recordAttempt({
-		key: currentKey,
+		key: currentScale.toString(),
 		degreesLabel,
-		targetNotes: targetNotes.join(" "),
+		targetNotes: targetDisplayNames.join(" "),
 		nameErrors: namePhaseErrors,
 		findErrors: 0,
 		timedOut: true,
@@ -183,14 +184,15 @@ function scheduleAdvance() {
 }
 
 function advance() {
-	const q = generateQuestion();
-	currentKey = q.key;
+	const q = generateQuestion(enabledFormulas);
+	currentScale = q.scale;
 	currentDegrees = q.degrees;
-	targetNotes = q.notes;
+	targetSemitones = q.targetSemitones;
+	targetDisplayNames = q.targetDisplayNames;
 	phase = "name";
 	foundInNamePhase = new Set();
 	namePhaseErrors = 0;
-	wrongFlashNote = null;
+	wrongFlashIndex = null;
 	foundOnNeck = [];
 	foundPitchClassesOnNeck = new Set();
 	findPhaseErrors = 0;
@@ -209,22 +211,23 @@ function recordAttempt(attempt: AttemptRecord) {
 	}
 }
 
-function onNoteButtonClick(pc: string) {
-	if (phaseLocked || phase !== "name" || foundInNamePhase.has(pc)) return;
+// Phase 1: button index = semitone (0–11)
+function onNoteButtonClick(semitone: number) {
+	if (phaseLocked || phase !== "name" || foundInNamePhase.has(semitone)) return;
 
-	if (targetNotes.includes(pc)) {
+	if (targetSemitones.includes(semitone)) {
 		const newFound = new Set(foundInNamePhase);
-		newFound.add(pc);
+		newFound.add(semitone);
 		foundInNamePhase = newFound;
-		if (newFound.size === targetNotes.length) {
+		if (newFound.size === targetSemitones.length) {
 			onNamePhaseComplete();
 		}
 	} else {
 		namePhaseErrors++;
-		wrongFlashNote = pc;
+		wrongFlashIndex = semitone;
 		if (flashTimeout) clearTimeout(flashTimeout);
 		flashTimeout = setTimeout(() => {
-			wrongFlashNote = null;
+			wrongFlashIndex = null;
 		}, 500);
 	}
 }
@@ -237,9 +240,9 @@ function onNamePhaseComplete() {
 
 function onFretClick(stringNote: StringNote) {
 	if (phaseLocked || phase !== "find") return;
-	const pc = stringNote.note.canonicalName;
+	const pc = pitchClass(stringNote.note.toMidi());
 
-	if (targetNotes.includes(pc)) {
+	if (targetSemitones.includes(pc)) {
 		const alreadyAt = foundOnNeck.some(
 			(f) =>
 				f.stringIndex === stringNote.stringIndex &&
@@ -252,7 +255,7 @@ function onFretClick(stringNote: StringNote) {
 			const newFound = new Set(foundPitchClassesOnNeck);
 			newFound.add(pc);
 			foundPitchClassesOnNeck = newFound;
-			if (newFound.size === targetNotes.length) {
+			if (newFound.size === targetSemitones.length) {
 				onFindPhaseComplete();
 			}
 		}
@@ -287,9 +290,9 @@ function onFindPhaseComplete() {
 	}
 
 	recordAttempt({
-		key: currentKey,
+		key: currentScale.toString(),
 		degreesLabel,
-		targetNotes: targetNotes.join(" "),
+		targetNotes: targetDisplayNames.join(" "),
 		nameErrors: namePhaseErrors,
 		findErrors: findPhaseErrors,
 		timedOut: false,
@@ -298,9 +301,11 @@ function onFindPhaseComplete() {
 
 	posthog.capture("interval_key_context_answered", {
 		correct,
-		key: currentKey,
+		scale: currentScale.toString(),
+		scale_formula: currentScale.name,
+		root: currentScale.noteName(currentScale.root),
 		degrees_label: degreesLabel,
-		target_notes: targetNotes.join(" "),
+		target_notes: targetDisplayNames.join(" "),
 		name_errors: namePhaseErrors,
 		find_errors: findPhaseErrors,
 		score_correct: sessionScore.correct,
@@ -319,6 +324,16 @@ function toggleTimer() {
 	}
 }
 
+function toggleScale(name: string) {
+	const next = new Set(enabledScaleNames);
+	if (next.has(name) && next.size > 1) {
+		next.delete(name); // prevent empty selection
+	} else {
+		next.add(name);
+	}
+	enabledScaleNames = next;
+}
+
 function clearHistory() {
 	allHistory = [];
 	try {
@@ -335,13 +350,28 @@ function clearHistory() {
 
 <div class="quiz">
 	<h2>Key Context Quiz</h2>
-	<p class="subtitle">Name the notes for a key + interval set, then find them on the neck</p>
+	<p class="subtitle">Name the notes for a scale + interval set, then find them on the neck</p>
 
 	<div class="controls">
 		<label class="control timer-toggle">
 			<input type="checkbox" checked={timerEnabled} onchange={toggleTimer} />
 			Timer ({TIMER_SECONDS}s)
 		</label>
+	</div>
+
+	<div class="scale-picker">
+		<span class="scale-picker-label">Scales</span>
+		<div class="scale-chips">
+			{#each ALL_SCALE_FORMULAS as formula}
+				<button
+					class="scale-chip"
+					class:active={enabledScaleNames.has(formula.name)}
+					onclick={() => toggleScale(formula.name)}
+				>
+					{formula.name}
+				</button>
+			{/each}
+		</div>
 	</div>
 
 	<div class="phase-stepper">
@@ -369,22 +399,22 @@ function clearHistory() {
 
 		<div class="prompt-card">
 			<span class="prompt-text">
-				Key of <strong>{currentKey} Major</strong> — what notes are
+				<strong>{currentScale.toString()}</strong> — what notes are
 				<strong>{degreesLabel}</strong>?
 			</span>
 		</div>
 
-		<p class="progress-label">{foundInNamePhase.size} / {targetNotes.length} notes found</p>
+		<p class="progress-label">{foundInNamePhase.size} / {targetSemitones.length} notes found</p>
 
 		<div class="note-buttons">
-			{#each PITCH_CLASS_NAMES as pc}
+			{#each buttonLabels as label, i}
 				<button
-					class:found={foundInNamePhase.has(pc)}
-					class:wrong={wrongFlashNote === pc}
-					disabled={foundInNamePhase.has(pc) || phaseLocked}
-					onclick={() => onNoteButtonClick(pc)}
+					class:found={foundInNamePhase.has(i)}
+					class:wrong={wrongFlashIndex === i}
+					disabled={foundInNamePhase.has(i) || phaseLocked}
+					onclick={() => onNoteButtonClick(i)}
 				>
-					{pc}
+					{label}
 				</button>
 			{/each}
 		</div>
@@ -394,13 +424,16 @@ function clearHistory() {
 		<div class="find-prompt">
 			<span class="find-label">Find:</span>
 			<div class="target-notes">
-				{#each targetNotes as note}
-					<span class="target-note" class:found={foundPitchClassesOnNeck.has(note)}>
-						{note}
+				{#each targetDisplayNames as name, i}
+					<span
+						class="target-note"
+						class:found={foundPitchClassesOnNeck.has(targetSemitones[i])}
+					>
+						{name}
 					</span>
 				{/each}
 			</div>
-			<span class="find-count">{foundPitchClassesOnNeck.size} / {targetNotes.length}</span>
+			<span class="find-count">{foundPitchClassesOnNeck.size} / {targetSemitones.length}</span>
 		</div>
 
 		<div class="neck-container">
@@ -447,7 +480,7 @@ function clearHistory() {
 					<li class:hist-correct={item.correct} class:hist-incorrect={!item.correct}>
 						<span class="hist-icon">{item.correct ? "✓" : "✗"}</span>
 						<span class="hist-eq">
-							{item.key} Major, {item.degreesLabel} → {item.targetNotes}
+							{item.key}, {item.degreesLabel} → {item.targetNotes}
 						</span>
 						{#if !item.correct}
 							<span class="hist-you">
@@ -511,6 +544,57 @@ function clearHistory() {
 		accent-color: #0891b2;
 	}
 
+	/* Scale picker */
+	.scale-picker {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		max-width: 600px;
+		width: 100%;
+		justify-content: center;
+	}
+
+	.scale-picker-label {
+		font-size: 0.8rem;
+		color: #64748b;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding-top: 0.3rem;
+		white-space: nowrap;
+	}
+
+	.scale-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+	}
+
+	.scale-chip {
+		padding: 0.2rem 0.6rem;
+		border-radius: 4px;
+		border: 1px solid #334155;
+		background: #1e293b;
+		color: #64748b;
+		font-size: 0.78rem;
+		font-family: inherit;
+		cursor: pointer;
+		transition:
+			background 0.12s,
+			color 0.12s,
+			border-color 0.12s;
+	}
+
+	.scale-chip:hover {
+		color: #94a3b8;
+		border-color: #475569;
+	}
+
+	.scale-chip.active {
+		background: rgba(8, 145, 178, 0.12);
+		color: #38bdf8;
+		border-color: #0891b2;
+	}
+
 	/* Phase stepper */
 	.phase-stepper {
 		display: flex;
@@ -524,7 +608,10 @@ function clearHistory() {
 		padding: 0.25rem 0.75rem;
 		border-radius: 4px;
 		border: 1px solid #334155;
-		transition: color 0.2s, border-color 0.2s, background 0.2s;
+		transition:
+			color 0.2s,
+			border-color 0.2s,
+			background 0.2s;
 	}
 
 	.step.active {
@@ -563,7 +650,9 @@ function clearHistory() {
 		height: 100%;
 		background: #0891b2;
 		border-radius: 3px;
-		transition: width 0.9s linear, background 0.3s;
+		transition:
+			width 0.9s linear,
+			background 0.3s;
 	}
 
 	.timer-bar.warning {
@@ -628,7 +717,10 @@ function clearHistory() {
 		cursor: pointer;
 		font-size: 0.9rem;
 		font-family: inherit;
-		transition: background 0.12s, border-color 0.12s, color 0.12s;
+		transition:
+			background 0.12s,
+			border-color 0.12s,
+			color 0.12s;
 	}
 
 	.note-buttons button:hover:not(:disabled) {
@@ -683,7 +775,10 @@ function clearHistory() {
 		color: #e2e8f0;
 		font-weight: 600;
 		font-size: 1rem;
-		transition: background 0.2s, color 0.2s, border-color 0.2s;
+		transition:
+			background 0.2s,
+			color 0.2s,
+			border-color 0.2s;
 	}
 
 	.target-note.found {
@@ -764,7 +859,7 @@ function clearHistory() {
 	/* History */
 	.history {
 		width: 100%;
-		max-width: 520px;
+		max-width: 560px;
 	}
 
 	.history-header {
