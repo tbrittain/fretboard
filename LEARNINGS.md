@@ -32,3 +32,18 @@ npm install --save-dev @emnapi/core@1.9.2 @emnapi/runtime@1.9.2
 ```
 
 Using `--save-optional` does NOT work — npm won't resolve optional packages it deems unneeded for the current platform, so the lock file entries still won't be created. Using `--save-dev` forces npm to resolve and install them unconditionally, creating the required lock file entries. They are tiny pure-JS packages with no platform restrictions, so installing them as devDependencies has no meaningful cost.
+
+---
+
+## Node version mismatch (Claude Code environment runs Node 22, repo requires >=24)
+
+**Symptom:** `npm install` fails with a Node engine version error, preventing devDependencies from being installed. This breaks the pre-commit hook (lefthook + biome), which allows lint errors to reach CI undetected.
+
+**Cause:** Claude Code's execution environment runs **Node 22**. The repo's `package.json` declares `"engines": { "node": ">=24" }`. When `.npmrc` contained `engine-strict=true`, npm hard-failed on version mismatch.
+
+**Fix applied:** Removed `engine-strict=true` from `.npmrc`. The `engines` field in `package.json` is retained as documentation of the intended Node version, but no longer blocks installation.
+
+**Secondary issue — biome not on `$PATH`:** The `lefthook.yml` pre-commit hook runs `biome check --write {staged_files} || true`. In this environment, biome is only available at `node_modules/.bin/biome`, not as a global. The `|| true` means the hook silently no-ops instead of blocking the commit. To manually lint before committing:
+```bash
+node_modules/.bin/biome check --write .
+```
