@@ -118,12 +118,14 @@ To run manually:
 node_modules/.bin/biome check --write .
 ```
 
-## After installing dependencies
+## Environment setup
 
-After running `npm install`, always run:
+Run `.devcontainer/setup.sh` to scaffold a fresh environment. It handles all of the following in order:
 
-```sh
-node_modules/.bin/svelte-kit sync
-```
+1. `npm install` — installs dependencies
+2. `cp .env.example .env` — creates a local `.env` with dummy PostHog values so builds don't fail (skipped if `.env` already exists)
+3. `npx svelte-kit sync` — generates `.svelte-kit/tsconfig.json` and other SvelteKit type artifacts that `tsconfig.json` extends
 
-This generates `.svelte-kit/tsconfig.json` (and other SvelteKit type artifacts) that the root `tsconfig.json` extends. Without it, TypeScript and Vitest will fail with `Tsconfig not found` errors. This is part of the GitHub Codespaces `setup.sh` script but must be run manually in other environments.
+**Always run `setup.sh` (or its steps manually) before building, type-checking, or running tests.** Without step 2, the build fails because `$env/static/public` requires `PUBLIC_POSTHOG_HOST` and `PUBLIC_POSTHOG_PROJECT_TOKEN` to be present at build time. Without step 3, TypeScript and Vitest fail with `Tsconfig not found` errors.
+
+The dummy values in `.env.example` (and the copied `.env`) are safe — analytics simply won't fire. Replace them with real PostHog credentials if you need analytics to work locally.
