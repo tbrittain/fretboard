@@ -5,6 +5,14 @@ set -e
 npm install -g @anthropic-ai/claude-code
 npm install
 
+# Bootstrap .env if not already present — builds fail without PUBLIC_POSTHOG_* vars.
+# Real analytics credentials can be filled in later; the dummy values in .env.example
+# are sufficient for local dev and CI builds.
+if [ ! -f .env ]; then
+  cp .env.example .env
+  echo "Created .env from .env.example"
+fi
+
 # Generate SvelteKit type declarations ($app types, path aliases, etc.)
 npx svelte-kit sync
 

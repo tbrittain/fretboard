@@ -1,5 +1,6 @@
 <script lang="ts">
 import posthog from "posthog-js";
+import { onDestroy, onMount } from "svelte";
 import GuitarNeck from "$lib/components/GuitarNeck.svelte";
 import {
 	GuitarNeckEStandardTuning,
@@ -7,26 +8,135 @@ import {
 } from "$types/GuitarNeckEStandardTuning";
 import { PITCH_CLASS_NAMES } from "$types/Note";
 
+interface ActiveNote extends StringNote {
+	fretNumber: number;
+}
+
+interface AttemptRecord {
+	stringIndex: number;
+	fretNumber: number;
+	note: string;
+	answer: string;
+	correct: boolean;
+}
+
+const STORAGE_KEY = "guess-the-note-history";
+const MAX_HISTORY = 500;
+const TIMER_SECONDS = 10;
+
+// Settings
 let startsAtFret = $state(0);
 let numberOfFrets = $state(3);
-let score = $state({ correct: 0, total: 0 });
-let incorrectNotes = $state<StringNote[]>([]);
+let timerEnabled = $state(false);
+
+// Quiz state
 let feedback = $state<{ text: string; correct: boolean } | null>(null);
 let guessLocked = $state(false);
+let sessionScore = $state({ correct: 0, total: 0 });
+let advanceTimeout: ReturnType<typeof setTimeout> | null = null;
 
-function getRandomNote(): StringNote {
+// Timer state
+let timerRemaining = $state(TIMER_SECONDS);
+let timerInterval: ReturnType<typeof setInterval> | null = null;
+let timerPct = $derived(timerRemaining / TIMER_SECONDS);
+
+// History
+let allHistory = $state<AttemptRecord[]>([]);
+let allTimeScore = $derived({
+	correct: allHistory.filter((a) => a.correct).length,
+	total: allHistory.length,
+});
+let recentHistory = $derived(allHistory.slice(0, 20));
+
+function getRandomNote(): ActiveNote {
 	const stringIndex = Math.floor(Math.random() * 6);
 	const fretNumber = Math.floor(Math.random() * numberOfFrets) + startsAtFret;
 	return {
 		stringIndex,
+		fretNumber,
 		note: GuitarNeckEStandardTuning[stringIndex][fretNumber],
 	};
 }
 
 let currentNote = $state(getRandomNote());
 
+onMount(() => {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (raw) allHistory = JSON.parse(raw);
+	} catch {
+		/* ignore */
+	}
+});
+
+onDestroy(() => {
+	stopTimer();
+	if (advanceTimeout) clearTimeout(advanceTimeout);
+});
+
+function stopTimer() {
+	if (timerInterval) {
+		clearInterval(timerInterval);
+		timerInterval = null;
+	}
+}
+
+function startTimer() {
+	stopTimer();
+	if (!timerEnabled) return;
+	timerRemaining = TIMER_SECONDS;
+	timerInterval = setInterval(() => {
+		timerRemaining = Math.max(0, timerRemaining - 1);
+		if (timerRemaining === 0) {
+			stopTimer();
+			onTimeout();
+		}
+	}, 1000);
+}
+
+function onTimeout() {
+	if (guessLocked) return;
+	guessLocked = true;
+	feedback = {
+		text: `Time's up! — ${currentNote.note.toString()}`,
+		correct: false,
+	};
+	sessionScore = { ...sessionScore, total: sessionScore.total + 1 };
+	recordAttempt({
+		stringIndex: currentNote.stringIndex,
+		fretNumber: currentNote.fretNumber,
+		note: currentNote.note.canonicalName,
+		answer: "—",
+		correct: false,
+	});
+	scheduleAdvance();
+}
+
+function scheduleAdvance() {
+	if (advanceTimeout) clearTimeout(advanceTimeout);
+	advanceTimeout = setTimeout(advance, 2000);
+}
+
+function advance() {
+	feedback = null;
+	guessLocked = false;
+	currentNote = getRandomNote();
+	startTimer();
+}
+
+function recordAttempt(attempt: AttemptRecord) {
+	const updated = [attempt, ...allHistory].slice(0, MAX_HISTORY);
+	allHistory = updated;
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+	} catch {
+		/* ignore */
+	}
+}
+
 function guess(pc: string) {
 	if (guessLocked) return;
+	stopTimer();
 	guessLocked = true;
 
 	const correct = currentNote.note.canonicalName === pc;
@@ -36,15 +146,25 @@ function guess(pc: string) {
 			text: `Correct! — ${currentNote.note.toString()}`,
 			correct: true,
 		};
-		score = { correct: score.correct + 1, total: score.total + 1 };
+		sessionScore = {
+			correct: sessionScore.correct + 1,
+			total: sessionScore.total + 1,
+		};
 	} else {
 		feedback = {
 			text: `Incorrect — ${currentNote.note.toString()}`,
 			correct: false,
 		};
-		score = { ...score, total: score.total + 1 };
-		incorrectNotes = [...incorrectNotes, currentNote];
+		sessionScore = { ...sessionScore, total: sessionScore.total + 1 };
 	}
+
+	recordAttempt({
+		stringIndex: currentNote.stringIndex,
+		fretNumber: currentNote.fretNumber,
+		note: currentNote.note.canonicalName,
+		answer: pc,
+		correct,
+	});
 
 	posthog.capture("guess_the_note_answered", {
 		correct,
@@ -53,15 +173,11 @@ function guess(pc: string) {
 		string_index: currentNote.stringIndex,
 		starts_at_fret: startsAtFret,
 		number_of_frets: numberOfFrets,
-		score_correct: score.correct,
-		score_total: score.total,
+		score_correct: sessionScore.correct,
+		score_total: sessionScore.total,
 	});
 
-	setTimeout(() => {
-		currentNote = getRandomNote();
-		feedback = null;
-		guessLocked = false;
-	}, 1200);
+	scheduleAdvance();
 }
 
 function onStartFretChange(e: Event) {
@@ -72,7 +188,8 @@ function onStartFretChange(e: Event) {
 		number_of_frets: numberOfFrets,
 	});
 	startsAtFret = newValue;
-	currentNote = getRandomNote();
+	if (advanceTimeout) clearTimeout(advanceTimeout);
+	advance();
 }
 
 function onNumFretsChange(e: Event) {
@@ -83,7 +200,26 @@ function onNumFretsChange(e: Event) {
 		starts_at_fret: startsAtFret,
 	});
 	numberOfFrets = newValue;
-	currentNote = getRandomNote();
+	if (advanceTimeout) clearTimeout(advanceTimeout);
+	advance();
+}
+
+function toggleTimer() {
+	timerEnabled = !timerEnabled;
+	if (timerEnabled) {
+		if (!guessLocked) startTimer();
+	} else {
+		stopTimer();
+	}
+}
+
+function clearHistory() {
+	allHistory = [];
+	try {
+		localStorage.removeItem(STORAGE_KEY);
+	} catch {
+		/* ignore */
+	}
 }
 </script>
 
@@ -95,24 +231,41 @@ function onNumFretsChange(e: Event) {
 	<h2>Guess the Note</h2>
 
 	<div class="controls">
-		<label>
+		<label class="control">
 			Starting fret
 			<select value={startsAtFret} onchange={onStartFretChange}>
-				{#each [0, 1, 2, 3] as n}
+				{#each [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as n}
 					<option value={n}>{n}</option>
 				{/each}
 			</select>
 		</label>
 
-		<label>
+		<label class="control">
 			Number of frets
 			<select value={numberOfFrets} onchange={onNumFretsChange}>
-				{#each [1, 2, 3, 4, 5, 6] as n}
+				{#each [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as n}
 					<option value={n}>{n}</option>
 				{/each}
 			</select>
 		</label>
+
+		<label class="control timer-toggle">
+			<input type="checkbox" checked={timerEnabled} onchange={toggleTimer} />
+			Timer ({TIMER_SECONDS}s)
+		</label>
 	</div>
+
+	{#if timerEnabled}
+		<div class="timer-wrap">
+			<div
+				class="timer-bar"
+				class:warning={timerPct < 0.4 && timerPct >= 0.2}
+				class:danger={timerPct < 0.2}
+				style:width="{timerPct * 100}%"
+			></div>
+			<span class="timer-label">{timerRemaining}s</span>
+		</div>
+	{/if}
 
 	<div class="neck-container">
 		<GuitarNeck
@@ -137,14 +290,39 @@ function onNumFretsChange(e: Event) {
 		<div class="feedback-placeholder"></div>
 	{/if}
 
-	<div class="score">Score: {score.correct} / {score.total}</div>
+	<div class="scores">
+		<span class="score-item">
+			<span class="score-label">Session</span>
+			<span class="score-value">{sessionScore.correct} / {sessionScore.total}</span>
+		</span>
+		{#if allTimeScore.total > 0}
+			<span class="score-sep">|</span>
+			<span class="score-item">
+				<span class="score-label">All-time</span>
+				<span class="score-value">{allTimeScore.correct} / {allTimeScore.total}</span>
+			</span>
+		{/if}
+	</div>
 
-	{#if incorrectNotes.length > 0}
-		<div class="incorrects">
-			<h3>Incorrect Notes</h3>
+	{#if recentHistory.length > 0}
+		<div class="history">
+			<div class="history-header">
+				<h3>Recent Attempts</h3>
+				<button class="clear-btn" onclick={clearHistory}>Clear history</button>
+			</div>
 			<ul>
-				{#each incorrectNotes as n}
-					<li>String {n.stringIndex + 1}: {n.note.toString()}</li>
+				{#each recentHistory as item}
+					<li class:hist-correct={item.correct} class:hist-incorrect={!item.correct}>
+						<span class="hist-icon">{item.correct ? "✓" : "✗"}</span>
+						<span class="hist-eq">
+							String {item.stringIndex + 1}, Fret {item.fretNumber} &rarr; {item.note}
+						</span>
+						{#if !item.correct}
+							<span class="hist-you">
+								{item.answer === "—" ? "(timeout)" : `(you: ${item.answer})`}
+							</span>
+						{/if}
+					</li>
 				{/each}
 			</ul>
 		</div>
@@ -168,17 +346,28 @@ function onNumFretsChange(e: Event) {
 
 	.controls {
 		display: flex;
-		gap: 2rem;
+		align-items: center;
+		gap: 1.5rem;
 		flex-wrap: wrap;
 		justify-content: center;
 	}
 
-	label {
+	.control {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.9rem;
 		color: #94a3b8;
+	}
+
+	.timer-toggle {
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.timer-toggle input[type="checkbox"] {
+		cursor: pointer;
+		accent-color: #0891b2;
 	}
 
 	select {
@@ -188,6 +377,46 @@ function onNumFretsChange(e: Event) {
 		border-radius: 4px;
 		padding: 0.3rem 0.5rem;
 		font-family: inherit;
+	}
+
+	/* Timer bar */
+	.timer-wrap {
+		width: 100%;
+		max-width: 400px;
+		position: relative;
+		height: 6px;
+		background: #1e293b;
+		border-radius: 3px;
+		overflow: hidden;
+		display: flex;
+		align-items: center;
+	}
+
+	.timer-bar {
+		position: absolute;
+		left: 0;
+		top: 0;
+		height: 100%;
+		background: #0891b2;
+		border-radius: 3px;
+		transition: width 0.9s linear, background 0.3s;
+	}
+
+	.timer-bar.warning {
+		background: #f59e0b;
+	}
+
+	.timer-bar.danger {
+		background: #ef4444;
+	}
+
+	.timer-label {
+		position: absolute;
+		right: 0;
+		top: -1.4rem;
+		font-size: 0.75rem;
+		color: #64748b;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.neck-container {
@@ -253,18 +482,52 @@ function onNumFretsChange(e: Event) {
 		border: 1px solid #991b1b;
 	}
 
-	.score {
-		font-size: 1rem;
+	/* Scores */
+	.scores {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		font-size: 0.9rem;
 		color: #64748b;
 	}
 
-	.incorrects {
-		width: 100%;
-		max-width: 400px;
+	.score-item {
+		display: flex;
+		gap: 0.4rem;
+		align-items: baseline;
 	}
 
-	.incorrects h3 {
-		margin: 0 0 0.4rem;
+	.score-label {
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.score-value {
+		font-weight: 600;
+		color: #94a3b8;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.score-sep {
+		color: #334155;
+	}
+
+	/* History */
+	.history {
+		width: 100%;
+		max-width: 420px;
+	}
+
+	.history-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.5rem;
+	}
+
+	.history-header h3 {
+		margin: 0;
 		font-size: 0.85rem;
 		font-weight: 500;
 		color: #64748b;
@@ -272,15 +535,63 @@ function onNumFretsChange(e: Event) {
 		letter-spacing: 0.05em;
 	}
 
-	.incorrects ul {
-		list-style: disc;
-		padding-left: 1.25rem;
-		margin: 0;
-		font-size: 0.875rem;
-		color: #475569;
+	.clear-btn {
+		background: none;
+		border: 1px solid #334155;
+		color: #64748b;
+		font-size: 0.75rem;
+		font-family: inherit;
+		padding: 0.2rem 0.5rem;
+		border-radius: 4px;
+		cursor: pointer;
 	}
 
-	.incorrects li {
-		margin: 0.2rem 0;
+	.clear-btn:hover {
+		border-color: #475569;
+		color: #94a3b8;
+	}
+
+	.history ul {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.history li {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		padding: 0.2rem 0.5rem;
+		border-radius: 4px;
+	}
+
+	.hist-correct {
+		color: #4ade80;
+		background: #052e1640;
+	}
+
+	.hist-incorrect {
+		color: #f87171;
+		background: #2d0a0a40;
+	}
+
+	.hist-icon {
+		font-size: 0.75rem;
+		width: 1em;
+		flex-shrink: 0;
+	}
+
+	.hist-eq {
+		flex: 1;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.hist-you {
+		font-size: 0.8rem;
+		opacity: 0.7;
 	}
 </style>
