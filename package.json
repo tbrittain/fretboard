@@ -17,7 +17,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "konva": "^10.2.3",
+    "konva": "^10.2.5",
     "posthog-js": "^1.367.0",
     "svelte-konva": "^1.0.0"
   },
