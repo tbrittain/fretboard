@@ -44,7 +44,7 @@
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
     "vitest": "^4.1.4",
-    "wrangler": "^4.81.1"
+    "wrangler": "^4.83.0"
   },
   "optionalDependencies": {
     "@emnapi/core": "1.9.2",
