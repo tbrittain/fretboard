@@ -37,7 +37,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@types/node": "^25.5.2",
     "@vitest/coverage-v8": "^4.1.4",
-    "lefthook": "^2.1.5",
+    "lefthook": "^2.1.6",
     "storybook": "^10.3.5",
     "svelte": "^5.55.3",
     "svelte-check": "^4.0.0",
