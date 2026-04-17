@@ -27,7 +27,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.11",
     "@chromatic-com/storybook": "^5.1.1",
-    "@emnapi/core": "^1.9.2",
+    "@emnapi/core": "^1.10.0",
     "@emnapi/runtime": "^1.9.2",
     "@storybook/addon-a11y": "^10.3.5",
     "@storybook/addon-docs": "^10.3.5",
@@ -47,7 +47,7 @@
     "wrangler": "^4.81.1"
   },
   "optionalDependencies": {
-    "@emnapi/core": "1.9.2",
+    "@emnapi/core": "1.10.0",
     "@emnapi/runtime": "1.9.2"
   }
 }
